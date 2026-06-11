@@ -11,6 +11,8 @@ Last Updated: Auto Generated
 
 from __future__ import annotations
 
+import os
+import uuid
 from datetime import datetime
 
 from fastapi import HTTPException, UploadFile
@@ -18,8 +20,11 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.models.lms import Course, Enrollment, Lesson, Quiz
+from app.models.trainer_lesson_material import TrainerLessonMaterial
 from app.schemas.lms import LessonCreate
 from app.schemas.trainer import (
+    TrainerLessonMaterialListResponse,
+    TrainerLessonMaterialResponse,
     TrainerLmsCourseDetail,
     TrainerLmsCourseItem,
     TrainerLmsCourseUpdate,
@@ -30,6 +35,29 @@ from app.schemas.trainer import (
     TrainerLmsLessonsResponse,
     TrainerLmsMaterialItem,
 )
+
+
+# =====================================================
+# SECTION: CONSTANTS
+# PURPOSE:
+# Upload directory root. Resolves to backend/uploads/lms/ regardless of
+# where the server process is started from, using this file as the anchor.
+# =====================================================
+
+_SERVICE_DIR = os.path.dirname(__file__)                          # .../app/services/trainers/
+_BACKEND_DIR = os.path.abspath(os.path.join(_SERVICE_DIR, "..", "..", ".."))  # backend/
+UPLOADS_ROOT = os.path.join(_BACKEND_DIR, "uploads", "lms")
+
+# Allowed MIME types for MVP upload.
+_ALLOWED_CONTENT_TYPES: dict[str, str] = {
+    "application/pdf": "pdf",
+    "video/mp4": "video",
+    "video/webm": "video",
+    "video/quicktime": "video",
+}
+
+# 50 MB hard limit per file.
+_MAX_FILE_SIZE = 50 * 1024 * 1024
 
 
 FEATURE_STATUS = [
@@ -66,6 +94,10 @@ FEATURE_STATUS = [
 ]
 
 
+# =====================================================
+# SECTION: INTERNAL HELPERS
+# =====================================================
+
 def _course_counts(db: Session, course_id: str) -> dict[str, int]:
     lesson_count = (
         db.query(func.count(Lesson.id))
@@ -79,23 +111,19 @@ def _course_counts(db: Session, course_id: str) -> dict[str, int]:
         .scalar()
         or 0
     )
+    # Material count now reads from the real materials table.
     material_count = (
-        db.query(func.count(Lesson.id))
-        .filter(
-            Lesson.course_id == course_id,
-            Lesson.content_type != "assignment",
-            or_(
-                (Lesson.video_url.isnot(None) & (Lesson.video_url != "")),
-                (Lesson.pdf_url.isnot(None) & (Lesson.pdf_url != "")),
-                (Lesson.assignment_url.isnot(None) & (Lesson.assignment_url != "")),
-            ),
-        )
+        db.query(func.count(TrainerLessonMaterial.id))
+        .filter(TrainerLessonMaterial.course_id == course_id)
         .scalar()
         or 0
     )
     enrolled_students = (
         db.query(func.count(Enrollment.id))
-        .filter(Enrollment.course_id == course_id, func.lower(Enrollment.status) == "active")
+        .filter(
+            Enrollment.course_id == course_id,
+            func.lower(Enrollment.status) == "active",
+        )
         .scalar()
         or 0
     )
@@ -123,11 +151,57 @@ def _course_item(db: Session, course: Course) -> TrainerLmsCourseItem:
         quiz_count=counts["quiz_count"],
         enrolled_students=counts["enrolled_students"],
         can_create_lessons=True,
-        can_upload_materials=False,
+        can_upload_materials=True,          # ← enabled: upload system is live
         created_at=course.created_at.isoformat() if course.created_at else None,
         updated_at=course.updated_at.isoformat() if course.updated_at else None,
     )
 
+
+def _material_response(material: TrainerLessonMaterial) -> TrainerLessonMaterialResponse:
+    """Convert an ORM row to the Pydantic response schema."""
+    return TrainerLessonMaterialResponse(
+        id=material.id,
+        course_id=material.course_id,
+        lesson_id=material.lesson_id,
+        trainer_id=material.trainer_id,
+        filename=material.filename,
+        file_url=material.file_url,
+        file_size=material.file_size,
+        content_type=material.content_type,
+        download_count=material.download_count,
+        created_at=material.created_at.isoformat() if material.created_at else None,
+    )
+
+
+# =====================================================
+# SECTION: OWNERSHIP VALIDATION
+# =====================================================
+
+def verify_course_ownership(db: Session, trainer_id: str, course_id: str) -> Course:
+    course = (
+        db.query(Course)
+        .filter(Course.id == course_id, Course.trainer_id == trainer_id)
+        .first()
+    )
+    if not course:
+        raise HTTPException(status_code=404, detail="Trainer course not found")
+    return course
+
+
+def _verify_lesson_ownership(db: Session, course_id: str, lesson_id: str) -> Lesson:
+    lesson = (
+        db.query(Lesson)
+        .filter(Lesson.id == lesson_id, Lesson.course_id == course_id)
+        .first()
+    )
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    return lesson
+
+
+# =====================================================
+# SECTION: COURSE FUNCTIONS
+# =====================================================
 
 def get_trainer_courses(db: Session, trainer_id: str) -> TrainerLmsCoursesResponse:
     courses = (
@@ -153,17 +227,6 @@ def get_trainer_courses(db: Session, trainer_id: str) -> TrainerLmsCoursesRespon
     )
 
 
-def verify_course_ownership(db: Session, trainer_id: str, course_id: str) -> Course:
-    course = (
-        db.query(Course)
-        .filter(Course.id == course_id, Course.trainer_id == trainer_id)
-        .first()
-    )
-    if not course:
-        raise HTTPException(status_code=404, detail="Trainer course not found")
-    return course
-
-
 def get_trainer_course_detail(
     db: Session,
     trainer_id: str,
@@ -173,6 +236,10 @@ def get_trainer_course_detail(
     item = _course_item(db, course)
     return TrainerLmsCourseDetail(**item.dict())
 
+
+# =====================================================
+# SECTION: LESSON FUNCTIONS
+# =====================================================
 
 def _lesson_item(lesson: Lesson) -> TrainerLmsLessonItem:
     return TrainerLmsLessonItem(
@@ -225,64 +292,6 @@ def create_trainer_lesson(
     return _lesson_item(lesson)
 
 
-def upload_trainer_material_contract(
-    db: Session,
-    trainer_id: str,
-    course_id: str,
-    file: UploadFile,
-) -> dict[str, str]:
-    verify_course_ownership(db, trainer_id, course_id)
-    _ = file.filename
-    return {
-        "status": "pending_storage",
-        "message": "Upload storage will be enabled after material persistence is added.",
-    }
-
-
-def get_trainer_materials(db: Session, trainer_id: str) -> list[TrainerLmsMaterialItem]:
-    rows = (
-        db.query(Lesson)
-        .join(Course, Lesson.course_id == Course.id)
-        .filter(
-            Course.trainer_id == trainer_id,
-            Lesson.content_type != "assignment",
-            or_(
-                (Lesson.video_url.isnot(None) & (Lesson.video_url != "")),
-                (Lesson.pdf_url.isnot(None) & (Lesson.pdf_url != "")),
-                (Lesson.assignment_url.isnot(None) & (Lesson.assignment_url != "")),
-            ),
-        )
-        .order_by(Lesson.created_at.desc())
-        .all()
-    )
-    materials: list[TrainerLmsMaterialItem] = []
-    for lesson in rows:
-        url = lesson.pdf_url or lesson.video_url or lesson.assignment_url
-        content_type = "pdf" if lesson.pdf_url else "video" if lesson.video_url else "material"
-        materials.append(
-            TrainerLmsMaterialItem(
-                id=lesson.id,
-                course_id=lesson.course_id,
-                filename=lesson.title,
-                content_type=content_type,
-                url=url,
-                created_at=lesson.created_at.isoformat() if lesson.created_at else None,
-            )
-        )
-    return materials
-
-
-def _verify_lesson_ownership(db: Session, course_id: str, lesson_id: str) -> Lesson:
-    lesson = (
-        db.query(Lesson)
-        .filter(Lesson.id == lesson_id, Lesson.course_id == course_id)
-        .first()
-    )
-    if not lesson:
-        raise HTTPException(status_code=404, detail="Lesson not found")
-    return lesson
-
-
 def update_trainer_lesson(
     db: Session,
     trainer_id: str,
@@ -312,6 +321,10 @@ def delete_trainer_lesson(
     db.commit()
 
 
+# =====================================================
+# SECTION: COURSE STATUS
+# =====================================================
+
 def update_trainer_course_status(
     db: Session,
     trainer_id: str,
@@ -326,3 +339,181 @@ def update_trainer_course_status(
     db.refresh(course)
     item = _course_item(db, course)
     return TrainerLmsCourseDetail(**item.dict())
+
+
+# =====================================================
+# SECTION: MATERIAL FUNCTIONS
+# =====================================================
+
+async def upload_trainer_material(
+    db: Session,
+    trainer_id: str,
+    course_id: str,
+    file: UploadFile,
+    lesson_id: str | None = None,
+) -> TrainerLessonMaterialResponse:
+    """
+    Save an uploaded file to local storage and persist metadata to DB.
+
+    Storage path: backend/uploads/lms/{trainer_id}/{course_id}/{uuid}_{filename}
+    Accessible at: /uploads/lms/{trainer_id}/{course_id}/{uuid}_{filename}
+
+    Raises 404 if the course is not owned by trainer_id.
+    Raises 404 if lesson_id is provided but does not belong to the course.
+    Raises 400 if the file type is not allowed or the file exceeds the size limit.
+    """
+    # 1. Ownership validation — raises 404 if course not found or not owned.
+    verify_course_ownership(db, trainer_id, course_id)
+
+    # 2. Optional lesson validation — lesson must belong to the same course.
+    if lesson_id:
+        _verify_lesson_ownership(db, course_id, lesson_id)
+
+    # 3. Content type validation.
+    mime = file.content_type or ""
+    content_type_label = _ALLOWED_CONTENT_TYPES.get(mime)
+    if not content_type_label:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"File type '{mime}' is not allowed. "
+                "Accepted types: PDF, MP4, WebM, MOV."
+            ),
+        )
+
+    # 4. Read file bytes and enforce size limit.
+    file_bytes = await file.read()
+    file_size = len(file_bytes)
+    if file_size > _MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File exceeds the 50 MB limit ({file_size // (1024 * 1024)} MB received).",
+        )
+
+    # 5. Build destination directory and safe filename.
+    dest_dir = os.path.join(UPLOADS_ROOT, trainer_id, course_id)
+    os.makedirs(dest_dir, exist_ok=True)
+
+    safe_original = os.path.basename(file.filename or "upload")
+    unique_filename = f"{uuid.uuid4().hex}_{safe_original}"
+    dest_path = os.path.join(dest_dir, unique_filename)
+
+    # 6. Write to disk.
+    with open(dest_path, "wb") as fh:
+        fh.write(file_bytes)
+
+    # 7. Build the public URL path (matches the StaticFiles mount in main.py).
+    file_url = f"/uploads/lms/{trainer_id}/{course_id}/{unique_filename}"
+
+    # 8. Insert metadata row into trainer_lesson_materials.
+    material = TrainerLessonMaterial(
+        id=str(uuid.uuid4()),
+        course_id=course_id,
+        lesson_id=lesson_id,
+        trainer_id=trainer_id,
+        filename=safe_original,
+        file_url=file_url,
+        file_size=file_size,
+        content_type=content_type_label,
+        download_count=0,
+        created_at=datetime.utcnow(),
+    )
+    db.add(material)
+    db.commit()
+    db.refresh(material)
+
+    return _material_response(material)
+
+
+def get_trainer_materials(
+    db: Session,
+    trainer_id: str,
+) -> TrainerLessonMaterialListResponse:
+    """
+    Return all materials uploaded by this trainer across all their courses.
+    Reads from trainer_lesson_materials — no longer derived from lesson URLs.
+    """
+    rows = (
+        db.query(TrainerLessonMaterial)
+        .filter(TrainerLessonMaterial.trainer_id == trainer_id)
+        .order_by(TrainerLessonMaterial.created_at.desc())
+        .all()
+    )
+    return TrainerLessonMaterialListResponse(
+        materials=[_material_response(row) for row in rows],
+        total=len(rows),
+        updated_at=datetime.utcnow().isoformat(),
+    )
+
+
+def get_course_materials(
+    db: Session,
+    trainer_id: str,
+    course_id: str,
+) -> TrainerLessonMaterialListResponse:
+    """
+    Return all materials for a specific course.
+    Validates course ownership before querying — prevents cross-trainer access.
+    """
+    verify_course_ownership(db, trainer_id, course_id)
+    rows = (
+        db.query(TrainerLessonMaterial)
+        .filter(
+            TrainerLessonMaterial.course_id == course_id,
+            TrainerLessonMaterial.trainer_id == trainer_id,
+        )
+        .order_by(TrainerLessonMaterial.created_at.desc())
+        .all()
+    )
+    return TrainerLessonMaterialListResponse(
+        materials=[_material_response(row) for row in rows],
+        total=len(rows),
+        updated_at=datetime.utcnow().isoformat(),
+    )
+
+
+# =====================================================
+# SECTION: LEGACY MATERIAL HELPER
+# PURPOSE:
+# get_trainer_materials_legacy() preserves the original behaviour of deriving
+# material items from lesson pdf_url / video_url fields. Kept here for
+# reference only — no route calls this function. Remove in Phase 4 cleanup.
+# =====================================================
+
+def _get_trainer_materials_legacy(
+    db: Session,
+    trainer_id: str,
+) -> list[TrainerLmsMaterialItem]:
+    """Derives materials from lesson URL fields. Legacy — not called by any route."""
+    rows = (
+        db.query(Lesson)
+        .join(Course, Lesson.course_id == Course.id)
+        .filter(
+            Course.trainer_id == trainer_id,
+            Lesson.content_type != "assignment",
+            or_(
+                (Lesson.video_url.isnot(None) & (Lesson.video_url != "")),
+                (Lesson.pdf_url.isnot(None) & (Lesson.pdf_url != "")),
+                (Lesson.assignment_url.isnot(None) & (Lesson.assignment_url != "")),
+            ),
+        )
+        .order_by(Lesson.created_at.desc())
+        .all()
+    )
+    materials: list[TrainerLmsMaterialItem] = []
+    for lesson in rows:
+        url = lesson.pdf_url or lesson.video_url or lesson.assignment_url
+        content_type = (
+            "pdf" if lesson.pdf_url else "video" if lesson.video_url else "material"
+        )
+        materials.append(
+            TrainerLmsMaterialItem(
+                id=lesson.id,
+                course_id=lesson.course_id,
+                filename=lesson.title,
+                content_type=content_type,
+                url=url,
+                created_at=lesson.created_at.isoformat() if lesson.created_at else None,
+            )
+        )
+    return materials

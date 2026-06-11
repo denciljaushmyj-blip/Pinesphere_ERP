@@ -20,7 +20,7 @@ from sqlalchemy import engine_from_config, pool
 
 from app.core.config import settings
 from app.db.database import Base
-from app.models import attendance, batch, branch, crm, finance, franchise, history, hr, lms, operations, settings as settings_model, token, trainer_task, user  # noqa: F401
+from app.models import attendance, batch, branch, crm, finance, franchise, history, hr, lms, operations, settings as settings_model, token, trainer_lesson_material, trainer_task, user  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)

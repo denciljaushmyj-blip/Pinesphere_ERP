@@ -15,8 +15,11 @@ Last Updated: Auto Generated
 # Keeping imports together makes dependencies easy to review.
 # =====================================================
 
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.api.attendance import router as attendance_router
 from app.api.auth import router as auth_router, users_router, v1_auth_router
@@ -27,7 +30,7 @@ from app.api.lms import router as lms_router
 from app.db.database import Base, engine
 
 # Import models before create_all so SQLAlchemy metadata is fully registered.
-from app.models import attendance, branch, lms, token, user, crm, finance, history  # noqa: F401
+from app.models import attendance, branch, lms, token, trainer_lesson_material, user, crm, finance, history  # noqa: F401
 from app.models import settings  # noqa: F401
 from app.models import franchise, hr, operations  # noqa: F401
 
@@ -118,6 +121,22 @@ app.include_router(v1_trainer_router)
 # Included only when app.api.demo_otp exists.
 if demo_otp_router is not None:
     app.include_router(demo_otp_router)
+
+
+# =====================================================
+# SECTION: STATIC FILE SERVING
+# PURPOSE:
+# Serves locally uploaded LMS files (PDFs, videos) under /uploads.
+# Files are written to backend/uploads/lms/ by the material upload service.
+# The directory is created on startup if it does not already exist.
+# No auth is enforced at the static layer — access is controlled by the
+# API routes that return file URLs.
+# =====================================================
+
+UPLOADS_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads")
+os.makedirs(UPLOADS_DIR, exist_ok=True)
+
+app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 
 # =====================================================

@@ -40,7 +40,8 @@ from app.schemas.trainer import (
     TrainerLmsLessonItem,
     TrainerLmsLessonUpdate,
     TrainerLmsLessonsResponse,
-    TrainerLmsMaterialItem,
+    TrainerLessonMaterialListResponse,
+    TrainerLessonMaterialResponse,
     TrainerStudentDetailsResponse,
     TrainerStudentsResponse,
 )
@@ -152,26 +153,73 @@ def delete_trainer_lesson(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("/lms/materials")
-def trainer_lms_upload_material(
+@router.post("/lms/materials", response_model=TrainerLessonMaterialResponse, status_code=201)
+async def trainer_lms_upload_material(
     course_id: str = Form(...),
+    lesson_id: str | None = Form(None),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user=Depends(require_roles(UserRole.TRAINER)),
 ):
-    from app.services.trainers.lms import upload_trainer_material_contract
+    """
+    POST /api/v1/trainer/lms/materials
 
-    return upload_trainer_material_contract(db, current_user.id, course_id, file)
+    Accepts multipart/form-data with:
+      - course_id  (required)  — UUID of the trainer-owned course
+      - lesson_id  (optional)  — UUID of a lesson within that course
+      - file       (required)  — PDF, MP4, WebM, or MOV (max 50 MB)
+
+    Validates course ownership, optional lesson ownership, MIME type, and
+    file size before writing to disk and inserting a metadata row.
+    Returns the created TrainerLessonMaterialResponse on success.
+    """
+    from app.services.trainers.lms import upload_trainer_material
+
+    return await upload_trainer_material(
+        db=db,
+        trainer_id=current_user.id,
+        course_id=course_id,
+        file=file,
+        lesson_id=lesson_id,
+    )
 
 
-@router.get("/lms/materials", response_model=list[TrainerLmsMaterialItem])
+@router.get("/lms/materials", response_model=TrainerLessonMaterialListResponse)
 def trainer_lms_materials(
     db: Session = Depends(get_db),
     current_user=Depends(require_roles(UserRole.TRAINER)),
 ):
+    """
+    GET /api/v1/trainer/lms/materials
+
+    Returns all materials uploaded by the authenticated trainer across all
+    their courses. Reads from trainer_lesson_materials — not derived from
+    lesson URL fields.
+    """
     from app.services.trainers.lms import get_trainer_materials
 
     return get_trainer_materials(db, current_user.id)
+
+
+@router.get(
+    "/lms/courses/{course_id}/materials",
+    response_model=TrainerLessonMaterialListResponse,
+)
+def trainer_lms_course_materials(
+    course_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles(UserRole.TRAINER)),
+):
+    """
+    GET /api/v1/trainer/lms/courses/{course_id}/materials
+
+    Returns all materials for a single trainer-owned course.
+    Validates that Course.trainer_id == current_user.id before querying —
+    cross-trainer access returns 404.
+    """
+    from app.services.trainers.lms import get_course_materials
+
+    return get_course_materials(db, current_user.id, course_id)
 
 
 @router.get("/assignments", response_model=TrainerAssignmentsResponse)

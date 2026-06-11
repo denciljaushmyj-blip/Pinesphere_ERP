@@ -504,3 +504,32 @@ class TrainerAttendanceHistoryResponse(BaseModel):
     total: int
     page: int
     limit: int
+
+
+# ─── LMS Material Schemas ─────────────────────────────────────────────────────
+# All schemas below are additive — no existing schema above is modified.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TrainerLessonMaterialResponse(BaseModel):
+    """Single material row returned after upload or in list responses.
+    Mirrors the trainer_lesson_materials table columns exactly."""
+
+    id: str
+    course_id: str
+    lesson_id: Optional[str] = None
+    trainer_id: str
+    filename: str
+    file_url: str
+    file_size: Optional[int] = None
+    content_type: str = "pdf"
+    download_count: int = 0
+    created_at: Optional[str] = None
+
+
+class TrainerLessonMaterialListResponse(BaseModel):
+    """Envelope returned by GET /lms/materials and GET /lms/courses/{course_id}/materials."""
+
+    materials: list[TrainerLessonMaterialResponse]
+    total: int
+    updated_at: str
