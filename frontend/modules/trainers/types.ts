@@ -18,12 +18,14 @@ export interface ApiMetric {
   module: string
 }
 
+
 export interface ApiAttendance {
   rate: number
   present: number
   total: number
   series: Array<{ label: string; rate: number }>
 }
+
 
 export interface ApiCourseSummary {
   total_courses: number
@@ -39,6 +41,7 @@ export interface ApiCourseSummary {
   }>
 }
 
+
 export interface ApiRecentActivity {
   title: string
   detail: string
@@ -46,11 +49,13 @@ export interface ApiRecentActivity {
   module: string
 }
 
+
 export interface ApiNotification {
   title: string
   message: string
   tone: "success" | "info" | "warning"
 }
+
 
 export interface ApiTask {
   title: string
@@ -58,17 +63,20 @@ export interface ApiTask {
   module: string
 }
 
+
 export interface ApiCalendarEvent {
   title: string
   date: string
   module: string
 }
 
+
 export interface ApiReport {
   title: string
   value: string
   module: string
 }
+
 
 /** Response from legacy GET /api/trainer/dashboard */
 export interface TrainerDashboardResponse {
@@ -91,6 +99,7 @@ export interface TrainerDashboardResponse {
   updated_at: string
 }
 
+
 // ─── V1 response shape (GET /api/v1/trainer/dashboard) ───────────────────────
 
 export interface V1Metrics {
@@ -101,6 +110,7 @@ export interface V1Metrics {
   pending_tasks: number | null
 }
 
+
 export interface V1TodayClass {
   id: string
   title: string
@@ -110,6 +120,7 @@ export interface V1TodayClass {
   present_count: number
   attendance_rate: number | null
 }
+
 
 export interface V1Batch {
   id: string
@@ -123,6 +134,7 @@ export interface V1Batch {
   display_code: string | null
 }
 
+
 export interface V1AttendanceSummary {
   today_rate: number | null
   weekly_series: Array<{ label: string; rate: number }>
@@ -130,6 +142,7 @@ export interface V1AttendanceSummary {
   submitted_sessions: number
   total_marked: number
 }
+
 
 export interface V1Assignment {
   id: string
@@ -139,6 +152,7 @@ export interface V1Assignment {
   max_marks: number
 }
 
+
 export interface V1TestResult {
   id: string
   title: string
@@ -147,6 +161,7 @@ export interface V1TestResult {
   total_marks: number
   passing_score: number
 }
+
 
 /** Response from GET /api/v1/trainer/dashboard */
 export interface TrainerDashboardV1Response {
@@ -159,6 +174,7 @@ export interface TrainerDashboardV1Response {
   pending_tasks: unknown[]
   updated_at: string
 }
+
 
 /** Single batch item – matches TrainerBatchItem Pydantic schema */
 export interface TrainerBatch {
@@ -185,6 +201,7 @@ export interface TrainerBatch {
     | "placeholder"
 }
 
+
 /** KPI summary row – matches TrainerBatchSummary Pydantic schema */
 export interface TrainerBatchSummaryKPI {
   assigned_batches: number
@@ -193,12 +210,14 @@ export interface TrainerBatchSummaryKPI {
   average_attendance: number | null
 }
 
+
 /** Full envelope returned by GET /api/v1/trainer/batches */
 export interface TrainerBatchesApiResponse {
   summary: TrainerBatchSummaryKPI
   batches: TrainerBatch[]
   updated_at: string
 }
+
 
 /** Legacy UI-only summary type (used for "Not connected yet" display states) */
 export interface TrainerBatchSummary {
@@ -207,6 +226,7 @@ export interface TrainerBatchSummary {
   total_students: number | "Not connected yet"
   average_attendance: number | "Not connected yet" | null
 }
+
 
 export interface TrainerBatchStudent {
   id: string
@@ -218,17 +238,20 @@ export interface TrainerBatchStudent {
   attendance_rate: number | null
 }
 
+
 export interface TrainerBatchAttendanceSummary {
   average_rate: number | null
   pending_sessions: number
   submitted_sessions: number
 }
 
+
 export interface TrainerBatchLmsProgress {
   average_progress: number | null
   completed_lessons: number
   total_lessons: number
 }
+
 
 export interface TrainerBatchAssignment {
   id: string
@@ -238,12 +261,14 @@ export interface TrainerBatchAssignment {
   max_marks: number
 }
 
+
 export interface TrainerBatchFeatureStatus {
   s_no: number
   feature: string
   phase: string
   status: string
 }
+
 
 export interface TrainerBatchDetailsResponse {
   id: string
@@ -262,6 +287,7 @@ export interface TrainerBatchDetailsResponse {
   updated_at: string
   capacity?: number | null
 }
+
 
 export type TrainerStudentRiskStatus =
   | "unknown"
@@ -282,6 +308,7 @@ export interface TrainerStudentSummary {
   average_progress: number | null
   projects_completed: number | null
 }
+
 
 export interface TrainerStudent {
   id: string
@@ -306,12 +333,14 @@ export interface TrainerStudent {
   student_status?: string | null
 }
 
+
 export interface TrainerStudentFeatureStatus {
   s_no: number
   feature: string
   phase: string
   status: string
 }
+
 
 export interface TrainerStudentsApiResponse {
   summary: TrainerStudentSummary
@@ -320,6 +349,7 @@ export interface TrainerStudentsApiResponse {
   updated_at: string
   connected: boolean
 }
+
 
 export interface TrainerStudentDetailsResponse {
   id: string
@@ -373,6 +403,7 @@ export interface TrainerStudentDetailsResponse {
   updated_at: string
 }
 
+
 export interface TrainerLmsSummary {
   total_courses: number | null
   published_courses: number | null
@@ -381,6 +412,7 @@ export interface TrainerLmsSummary {
   total_materials: number | null
   quiz_tools: number | null
 }
+
 
 export interface TrainerLmsCourse {
   id: string
@@ -401,11 +433,13 @@ export interface TrainerLmsCourse {
   updated_at?: string | null
 }
 
+
 export type TrainerLmsCourseStatus = "draft" | "published"
 
 export interface TrainerLmsCourseUpdate {
   status: TrainerLmsCourseStatus
 }
+
 
 export interface TrainerLmsLesson {
   id: string
@@ -422,6 +456,7 @@ export interface TrainerLmsLesson {
   is_preview: boolean
   created_at: string | null
 }
+
 
 /**
  * Payload for PATCH /api/v1/trainer/lms/courses/{courseId}/lessons/{lessonId}
@@ -442,12 +477,14 @@ export interface TrainerLmsLessonUpdate {
   is_preview?: boolean
 }
 
+
 export interface TrainerLmsFeatureStatus {
   s_no: number
   feature: string
   phase: string
   status: string
 }
+
 
 export interface TrainerLmsApiResponse {
   summary: TrainerLmsSummary
@@ -459,12 +496,14 @@ export interface TrainerLmsApiResponse {
   upload_api_connected: boolean
 }
 
+
 export interface TrainerAssignmentSummary {
   total_assignments: number | null
   published_assignments: number | null
   pending_submissions: number | null
   grading_queue: number | null
 }
+
 
 export interface TrainerAssignment {
   id: string
@@ -484,6 +523,7 @@ export interface TrainerAssignment {
   github_repository_url?: string | null
 }
 
+
 export interface TrainerAssignmentFormValues {
   title: string
   description: string
@@ -494,6 +534,7 @@ export interface TrainerAssignmentFormValues {
   assignment_url: string
   instructions: string
 }
+
 
 export interface TrainerAssignmentSubmission {
   id: string
@@ -506,12 +547,14 @@ export interface TrainerAssignmentSubmission {
   feedback_status: string
 }
 
+
 export interface TrainerAssignmentFeatureStatus {
   s_no: number
   feature: string
   phase: string
   status: string
 }
+
 
 export interface TrainerAssignmentsApiResponse {
   summary: TrainerAssignmentSummary
@@ -523,6 +566,7 @@ export interface TrainerAssignmentsApiResponse {
   create_assignment_api_connected: boolean
   github_repository_linking: boolean
 }
+
 
 // ─── Attendance Types ─────────────────────────────────────────────────────────
 
@@ -544,6 +588,7 @@ export interface TrainerAttendanceSession {
   created_at: string | null
 }
 
+
 /** Full session detail with student records – matches TrainerAttendanceSessionDetail */
 export interface TrainerAttendanceSessionDetail {
   id: string
@@ -563,6 +608,7 @@ export interface TrainerAttendanceSessionDetail {
   students: TrainerAttendanceStudentRecord[]
 }
 
+
 /** Single student row within a session – matches TrainerAttendanceStudentRecord */
 export interface TrainerAttendanceStudentRecord {
   student_id: string
@@ -571,6 +617,7 @@ export interface TrainerAttendanceStudentRecord {
   status: "present" | "absent" | "late" | "unmarked"
   remarks: string | null
 }
+
 
 /** Single row in the attendance history list */
 export interface TrainerAttendanceHistoryItem {
@@ -589,6 +636,7 @@ export interface TrainerAttendanceHistoryItem {
   attendance_rate: number | null
 }
 
+
 /** KPI summary for attendance landing page */
 export interface TrainerAttendanceSummary {
   total_sessions: number
@@ -596,9 +644,59 @@ export interface TrainerAttendanceSummary {
   pending_sessions: number
 }
 
+
 /** Single mark record sent in POST …/mark body */
 export interface TrainerAttendanceMarkRecord {
   student_id: string
   status: "present" | "absent" | "late"
   remarks: string | null
+}
+
+// ─── LMS Material Types ───────────────────────────────────────────────────────
+
+/**
+ * Single material row — mirrors TrainerLessonMaterialResponse Pydantic schema
+ * and the trainer_lesson_materials DB table exactly.
+ */
+export interface TrainerLessonMaterial {
+  id: string
+  course_id: string
+  /** null when the material is not linked to a specific lesson */
+  lesson_id: string | null
+  trainer_id: string
+  filename: string
+  /** Relative URL served by the StaticFiles mount, e.g. /uploads/lms/... */
+  file_url: string
+  /** File size in bytes; null if not recorded */
+  file_size: number | null
+  /** "pdf" | "video" */
+  content_type: string
+  download_count: number
+  created_at: string | null
+}
+
+
+/**
+ * Envelope returned by:
+ *   GET /api/v1/trainer/lms/materials
+ *   GET /api/v1/trainer/lms/courses/{courseId}/materials
+ * Mirrors TrainerLessonMaterialListResponse Pydantic schema.
+ */
+export interface TrainerLessonMaterialListResponse {
+  materials: TrainerLessonMaterial[]
+  total: number
+  updated_at: string
+}
+
+
+/**
+ * Input shape for the upload call in trainerLmsService.ts.
+ * Represents the form fields sent as multipart/form-data to
+ * POST /api/v1/trainer/lms/materials.
+ */
+export interface TrainerMaterialUploadInput {
+  courseId: string
+  /** Optional — links the material to a specific lesson */
+  lessonId?: string | null
+  file: File
 }
