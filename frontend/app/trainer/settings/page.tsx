@@ -1,10 +1,15 @@
 /**
- * Trainer Settings page.
- * Auth + role guard is handled by the parent TrainerLayout (../layout.tsx).
- * This page only renders the profile settings content.
+ * PINESPHERE ERP
+ * Module      : Trainers
+ * File        : trainer/settings/page.tsx
+ * Purpose     : Trainer Settings page.
+ *               Auth + role guard is handled by the parent TrainerLayout (../layout.tsx).
+ *               Renders the trainer-specific settings component — not the shared
+ *               student/generic profile page.
  */
-import ProfileSettingsPage from "@/app/settings/profile/page"
 
-export default function TrainerSettingsPage() {
-  return <ProfileSettingsPage />
+import TrainerSettingsPage from "./_components/TrainerSettingsPage"
+
+export default function TrainerSettingsRoute() {
+  return <TrainerSettingsPage />
 }

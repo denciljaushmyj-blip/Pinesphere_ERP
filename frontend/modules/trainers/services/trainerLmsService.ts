@@ -7,13 +7,18 @@ import {
   refreshStoredAccessToken,
 } from "@/lib/api"
 import type {
-  TrainerLmsApiResponse,
+  TrainerLessonMaterial,
+  TrainerLessonMaterialListResponse,
   TrainerLmsCourse,
   TrainerLmsCourseUpdate,
   TrainerLmsFeatureStatus,
   TrainerLmsLesson,
   TrainerLmsLessonUpdate,
+  TrainerLmsApiResponse,
+  TrainerMaterialUploadInput,
 } from "../types"
+
+// ─── Static feature status list ──────────────────────────────────────────────
 
 const FEATURE_STATUS: TrainerLmsFeatureStatus[] = [
   {
@@ -65,6 +70,8 @@ const EMPTY_RESPONSE: TrainerLmsApiResponse = {
   upload_api_connected: false,
 }
 
+// ─── Auth-aware fetch ─────────────────────────────────────────────────────────
+
 async function fetchWithAuth(endpoint: string, init?: RequestInit): Promise<Response> {
   const token = getStoredSessionValue("pinesphere_access_token")
   if (!token) {
@@ -89,17 +96,33 @@ async function fetchWithAuth(endpoint: string, init?: RequestInit): Promise<Resp
   return response
 }
 
-function numberOrNull(value: unknown) {
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function numberOrNull(value: unknown): number | null {
   return typeof value === "number" ? value : null
 }
 
-function numberOrZero(value: unknown) {
+function numberOrZero(value: unknown): number {
   return typeof value === "number" ? value : 0
 }
 
-function stringOrNull(value: unknown) {
+function stringOrNull(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value : null
 }
+
+async function readError(response: Response): Promise<string> {
+  let errorMessage = `${response.status} ${response.statusText}`
+  try {
+    const errorData = await response.json()
+    if (typeof errorData.detail === "string") errorMessage = errorData.detail
+  } catch {
+    /* keep response status */
+  }
+  if (response.status === 401) clearStoredSession()
+  return errorMessage
+}
+
+// ─── Normalizers ──────────────────────────────────────────────────────────────
 
 function normalizeCourse(row: Record<string, unknown>): TrainerLmsCourse {
   return {
@@ -140,6 +163,25 @@ function normalizeLesson(row: Record<string, unknown>): TrainerLmsLesson {
   }
 }
 
+/**
+ * Maps a raw API row from trainer_lesson_materials to TrainerLessonMaterial.
+ * Mirrors TrainerLessonMaterialResponse Pydantic schema.
+ */
+function normalizeMaterial(row: Record<string, unknown>): TrainerLessonMaterial {
+  return {
+    id: String(row.id ?? ""),
+    course_id: String(row.course_id ?? ""),
+    lesson_id: stringOrNull(row.lesson_id),
+    trainer_id: String(row.trainer_id ?? ""),
+    filename: String(row.filename ?? ""),
+    file_url: String(row.file_url ?? ""),
+    file_size: numberOrNull(row.file_size),
+    content_type: String(row.content_type ?? "pdf"),
+    download_count: numberOrZero(row.download_count),
+    created_at: stringOrNull(row.created_at),
+  }
+}
+
 function summaryFromCourses(courses: TrainerLmsCourse[]) {
   const lessonValues = courses
     .map((course) => course.lesson_count)
@@ -161,17 +203,7 @@ function summaryFromCourses(courses: TrainerLmsCourse[]) {
   }
 }
 
-async function readError(response: Response) {
-  let errorMessage = `${response.status} ${response.statusText}`
-  try {
-    const errorData = await response.json()
-    if (typeof errorData.detail === "string") errorMessage = errorData.detail
-  } catch {
-    /* keep response status */
-  }
-  if (response.status === 401) clearStoredSession()
-  return errorMessage
-}
+// ─── Course functions ─────────────────────────────────────────────────────────
 
 export async function getTrainerCourses(): Promise<TrainerLmsApiResponse> {
   const response = await fetchWithAuth("/api/v1/trainer/lms/courses")
@@ -222,8 +254,7 @@ export async function getTrainerCourses(): Promise<TrainerLmsApiResponse> {
 
 /**
  * GET /api/v1/trainer/lms/courses/{courseId}
- * Fetches a single trainer-owned course by its UUID.
- * Ownership is validated server-side — returns 404 if not found or not owned.
+ * Returns a single trainer-owned course. Server validates ownership — 404 if not found or not owned.
  */
 export async function getTrainerCourseDetail(courseId: string): Promise<TrainerLmsCourse> {
   const response = await fetchWithAuth(
@@ -261,10 +292,12 @@ export async function getTrainerCourseLessons(courseId: string): Promise<Trainer
   return []
 }
 
+// ─── Lesson mutation functions ────────────────────────────────────────────────
+
 /**
  * PATCH /api/v1/trainer/lms/courses/{courseId}/lessons/{lessonId}
  * Sends only the fields present in `payload` (partial update).
- * Returns the updated lesson as normalised by the server.
+ * Returns the updated lesson normalised from the server response.
  */
 export async function updateTrainerLesson(
   courseId: string,
@@ -306,35 +339,7 @@ export async function deleteTrainerLesson(
   }
 }
 
-export async function getTrainerMaterials(): Promise<unknown[]> {
-  const response = await fetchWithAuth("/api/v1/trainer/lms/materials")
-
-  if (response.status === 404) return []
-
-  if (!response.ok) {
-    throw new Error(await readError(response))
-  }
-
-  const data = await response.json()
-  return Array.isArray(data) ? data : []
-}
-
-export async function uploadTrainerMaterial(courseId: string, file: File): Promise<unknown> {
-  const formData = new FormData()
-  formData.append("course_id", courseId)
-  formData.append("file", file)
-
-  const response = await fetchWithAuth("/api/v1/trainer/lms/materials", {
-    method: "POST",
-    body: formData,
-  })
-
-  if (!response.ok) {
-    throw new Error(await readError(response))
-  }
-
-  return response.json()
-}
+// ─── Course status function ───────────────────────────────────────────────────
 
 /**
  * PATCH /api/v1/trainer/lms/courses/{courseId}
@@ -360,4 +365,110 @@ export async function updateTrainerCourseStatus(
 
   const data = await response.json()
   return normalizeCourse(data as Record<string, unknown>)
+}
+
+// ─── Material functions (Phase 3) ─────────────────────────────────────────────
+
+/**
+ * GET /api/v1/trainer/lms/materials
+ * Returns all materials across all trainer-owned courses.
+ * Mirrors TrainerLessonMaterialListResponse envelope: { materials, total, updated_at }.
+ */
+export async function getTrainerMaterials(): Promise<TrainerLessonMaterialListResponse> {
+  const response = await fetchWithAuth("/api/v1/trainer/lms/materials")
+
+  if (response.status === 404) {
+    return { materials: [], total: 0, updated_at: new Date().toISOString() }
+  }
+
+  if (!response.ok) {
+    throw new Error(await readError(response))
+  }
+
+  const data = await response.json()
+
+  // Handle envelope: { materials: [...], total: N, updated_at: "..." }
+  if (data && typeof data === "object" && Array.isArray(data.materials)) {
+    return {
+      materials: data.materials.map((row: Record<string, unknown>) => normalizeMaterial(row)),
+      total: typeof data.total === "number" ? data.total : data.materials.length,
+      updated_at: typeof data.updated_at === "string" ? data.updated_at : new Date().toISOString(),
+    }
+  }
+
+  // Fallback: bare array
+  if (Array.isArray(data)) {
+    const materials = data.map((row: Record<string, unknown>) => normalizeMaterial(row))
+    return { materials, total: materials.length, updated_at: new Date().toISOString() }
+  }
+
+  return { materials: [], total: 0, updated_at: new Date().toISOString() }
+}
+
+/**
+ * GET /api/v1/trainer/lms/courses/{courseId}/materials
+ * Returns materials scoped to a single trainer-owned course.
+ * Used by TrainerMaterialUploadPanel and the course detail material list.
+ */
+export async function getCourseMaterials(courseId: string): Promise<TrainerLessonMaterialListResponse> {
+  if (!courseId) return { materials: [], total: 0, updated_at: new Date().toISOString() }
+
+  const response = await fetchWithAuth(
+    `/api/v1/trainer/lms/courses/${encodeURIComponent(courseId)}/materials`
+  )
+
+  if (response.status === 404) {
+    return { materials: [], total: 0, updated_at: new Date().toISOString() }
+  }
+
+  if (!response.ok) {
+    throw new Error(await readError(response))
+  }
+
+  const data = await response.json()
+
+  if (data && typeof data === "object" && Array.isArray(data.materials)) {
+    return {
+      materials: data.materials.map((row: Record<string, unknown>) => normalizeMaterial(row)),
+      total: typeof data.total === "number" ? data.total : data.materials.length,
+      updated_at: typeof data.updated_at === "string" ? data.updated_at : new Date().toISOString(),
+    }
+  }
+
+  if (Array.isArray(data)) {
+    const materials = data.map((row: Record<string, unknown>) => normalizeMaterial(row))
+    return { materials, total: materials.length, updated_at: new Date().toISOString() }
+  }
+
+  return { materials: [], total: 0, updated_at: new Date().toISOString() }
+}
+
+/**
+ * POST /api/v1/trainer/lms/materials
+ * Uploads a file as multipart/form-data.
+ * Accepts courseId (required) and optional lessonId from TrainerMaterialUploadInput.
+ * Returns the saved TrainerLessonMaterial row from the database.
+ */
+export async function uploadTrainerMaterial(
+  input: TrainerMaterialUploadInput
+): Promise<TrainerLessonMaterial> {
+  const formData = new FormData()
+  formData.append("course_id", input.courseId)
+  formData.append("file", input.file)
+  if (input.lessonId) {
+    formData.append("lesson_id", input.lessonId)
+  }
+
+  const response = await fetchWithAuth("/api/v1/trainer/lms/materials", {
+    method: "POST",
+    body: formData,
+    // Do NOT set Content-Type — browser sets multipart boundary automatically
+  })
+
+  if (!response.ok) {
+    throw new Error(await readError(response))
+  }
+
+  const data = await response.json()
+  return normalizeMaterial(data as Record<string, unknown>)
 }

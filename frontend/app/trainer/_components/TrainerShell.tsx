@@ -168,7 +168,7 @@ export function TrainerShell({ children }: { children: ReactNode }) {
           </div>
 
           <nav className="mt-5 min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
-            {trainerSidebar.map((item) => {
+            {trainerSidebar.filter(item => !item.hidden).map((item) => {
               const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
               const Icon = iconMap[item.icon] ?? Home
               return (

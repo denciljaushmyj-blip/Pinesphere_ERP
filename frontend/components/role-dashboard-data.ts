@@ -50,6 +50,7 @@ export type SidebarModule = {
   href: string
   icon: DashboardIconKey
   badge?: string
+  hidden?: boolean 
 }
 
 export type MetricTone = "green" | "blue" | "purple" | "orange" | "red"

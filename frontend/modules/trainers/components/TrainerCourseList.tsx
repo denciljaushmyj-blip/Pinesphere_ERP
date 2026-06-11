@@ -13,8 +13,8 @@ export function TrainerCourseList({
   connected,
 }: {
   courses: TrainerLmsCourse[]
-  selectedCourseId: string | null
-  onSelectCourse: (courseId: string) => void
+  onSelectCourse?: (courseId: string) => void
+  selectedCourseId?: string | null
   connected: boolean
 }) {
   const router = useRouter()
@@ -39,7 +39,7 @@ export function TrainerCourseList({
           course={course}
           active={course.id === selectedCourseId}
           onSelect={() => {
-            onSelectCourse(course.id)
+            onSelectCourse?.(course.id)
             router.push(`/trainer/lms/${course.id}`)
           }}
         />

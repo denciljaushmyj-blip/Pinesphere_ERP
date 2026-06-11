@@ -1,18 +1,21 @@
 "use client"
 
-import { BookOpen, Brain, FileText, Plus, RefreshCw } from "lucide-react"
+import { BookOpen, Brain, ChevronRight, FileText, Plus, RefreshCw, Users } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 import { useTrainerLms } from "../hooks/useTrainerLms"
-import { TrainerCourseList } from "./TrainerCourseList"
-import { TrainerLessonList } from "./TrainerLessonList"
 import { TrainerLmsEmptyState } from "./TrainerLmsEmptyState"
-import { TrainerMaterialUploadPanel } from "./TrainerMaterialUploadPanel"
+import type { TrainerLmsCourse } from "../types"
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function kpiValue(value: number | null | undefined, connected: boolean) {
   if (!connected) return "—"
   if (value === null || value === undefined) return "0"
   return String(value)
 }
+
+// ─── KPI Card ─────────────────────────────────────────────────────────────────
 
 function KPICard({
   label,
@@ -28,55 +31,205 @@ function KPICard({
   icon: typeof BookOpen
 }) {
   const palette = {
-    green: { bg: "#E8F6F0", text: "#0B7A5A", border: "#CFE8DF" },
-    blue: { bg: "#EAF1FF", text: "#2563EB", border: "#D7E4FF" },
-    orange: { bg: "#FFF3E8", text: "#F97316", border: "#FEDFC2" },
-    purple: { bg: "#F3EAFE", text: "#7C3AED", border: "#E8D8FB" },
+    green: {
+      gradient: "linear-gradient(135deg, #F0FAF6 0%, #E2F5EE 100%)",
+      iconBg: "#0B7A5A",
+      value: "#0B7A5A",
+      border: "#C6E8D9",
+      shadow: "rgba(11,122,90,0.10)",
+    },
+    blue: {
+      gradient: "linear-gradient(135deg, #EEF4FF 0%, #E0ECFF 100%)",
+      iconBg: "#2563EB",
+      value: "#1D4ED8",
+      border: "#BFCFEE",
+      shadow: "rgba(37,99,235,0.10)",
+    },
+    orange: {
+      gradient: "linear-gradient(135deg, #FFF7ED 0%, #FFF0DC 100%)",
+      iconBg: "#F97316",
+      value: "#C2410C",
+      border: "#FDDCB8",
+      shadow: "rgba(249,115,22,0.10)",
+    },
+    purple: {
+      gradient: "linear-gradient(135deg, #F6F0FF 0%, #EDE4FF 100%)",
+      iconBg: "#7C3AED",
+      value: "#6D28D9",
+      border: "#D8C8F8",
+      shadow: "rgba(124,58,237,0.10)",
+    },
   } as const
   const p = palette[tone]
 
   return (
     <div
-      className="min-h-[116px] rounded-lg border bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.035)]"
-      style={{ borderColor: p.border }}
+      className="group relative overflow-hidden rounded-xl border p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+      style={{
+        background: p.gradient,
+        borderColor: p.border,
+        boxShadow: `0 2px 8px ${p.shadow}, 0 1px 2px rgba(0,0,0,0.04)`,
+      }}
     >
       <div className="flex items-start justify-between gap-3">
-        <h3 className="text-sm font-black text-[#475569]">{label}</h3>
+        <p className="text-[11px] font-bold uppercase tracking-widest text-[#64748B]">{label}</p>
         <span
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-          style={{ backgroundColor: p.bg, color: p.text }}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg shadow-sm"
+          style={{ backgroundColor: p.iconBg }}
         >
-          <Icon size={17} />
+          <Icon size={16} color="#FFFFFF" />
         </span>
       </div>
-      <p className="mt-2 text-2xl font-black text-[#020617]">{value}</p>
-      <p className="mt-1 text-xs font-semibold text-[#64748B]">{helper}</p>
+      <p className="mt-3 text-3xl font-black tracking-tight" style={{ color: p.value }}>
+        {value}
+      </p>
+      <p className="mt-1 text-xs font-medium text-[#94A3B8]">{helper}</p>
     </div>
   )
 }
 
-function PageSkeleton() {
+// ─── Status badge ─────────────────────────────────────────────────────────────
+
+function StatusBadge({ status }: { status: string }) {
+  const s = status.toLowerCase()
+  const styles =
+    s === "published"
+      ? { bg: "#E8F6F0", text: "#0B7A5A", border: "#B6DFCF", dot: "#0B7A5A" }
+      : s === "archived"
+      ? { bg: "#FFF3E8", text: "#C2410C", border: "#FDDCB8", dot: "#F97316" }
+      : { bg: "#F1F5F9", text: "#475569", border: "#CBD5E1", dot: "#94A3B8" }
+
   return (
-    <div className="space-y-6 animate-pulse">
-      <div className="flex items-center justify-between">
-        <div className="space-y-2">
-          <div className="h-8 w-44 rounded bg-gray-200" />
-          <div className="h-4 w-72 rounded bg-gray-200" />
+    <span
+      className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-black uppercase tracking-wider"
+      style={{ backgroundColor: styles.bg, color: styles.text, borderColor: styles.border }}
+    >
+      <span
+        className="inline-block h-1.5 w-1.5 rounded-full"
+        style={{ backgroundColor: styles.dot }}
+      />
+      {s.charAt(0).toUpperCase() + s.slice(1)}
+    </span>
+  )
+}
+
+// ─── Mini stat ────────────────────────────────────────────────────────────────
+
+function MiniStat({
+  icon: Icon,
+  value,
+  label,
+  color,
+}: {
+  icon: typeof BookOpen
+  value: number | null
+  label: string
+  color: string
+}) {
+  return (
+    <div className="flex flex-1 flex-col items-center gap-1 rounded-lg border border-[#E8EFF5] bg-[#F8FAFC] py-3 px-2">
+      <Icon size={14} style={{ color }} />
+      <p className="text-base font-black text-[#0F172A]">{value ?? "—"}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[#94A3B8]">{label}</p>
+    </div>
+  )
+}
+
+// ─── Course card ──────────────────────────────────────────────────────────────
+
+function CourseCard({ course }: { course: TrainerLmsCourse }) {
+  const router = useRouter()
+
+  return (
+    <div
+      className="group relative overflow-hidden rounded-xl border border-[#E3ECE8] bg-white transition-all duration-200 hover:-translate-y-0.5 hover:border-[#A8D5BF] hover:shadow-[0_8px_28px_rgba(11,122,90,0.10)]"
+      style={{ boxShadow: "0 2px 8px rgba(15,23,42,0.05), 0 1px 2px rgba(0,0,0,0.03)" }}
+    >
+      {/* Top accent bar */}
+      <div
+        className="h-1 w-full"
+        style={{
+          background:
+            course.status.toLowerCase() === "published"
+              ? "linear-gradient(90deg, #0B7A5A, #34D399)"
+              : "linear-gradient(90deg, #94A3B8, #CBD5E1)",
+        }}
+      />
+
+      <div className="p-6">
+        {/* Header row */}
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge status={course.status} />
+          {course.display_code && (
+            <span className="rounded-md border border-[#E2E8F0] bg-[#F8FAFC] px-2 py-0.5 text-[11px] font-bold text-[#64748B]">
+              {course.display_code}
+            </span>
+          )}
+          {course.difficulty_level && (
+            <span className="rounded-md border border-[#E2E8F0] bg-[#F8FAFC] px-2 py-0.5 text-[11px] font-bold text-[#64748B]">
+              {course.difficulty_level}
+            </span>
+          )}
         </div>
-        <div className="h-10 w-24 rounded bg-gray-200" />
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {[0, 1, 2, 3].map((item) => (
-          <div key={item} className="h-28 rounded-lg border border-gray-200 bg-white" />
-        ))}
-      </div>
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <div className="h-80 rounded-lg border border-gray-200 bg-white" />
-        <div className="h-80 rounded-lg border border-gray-200 bg-white" />
+
+        <h3 className="mt-3 text-xl font-black tracking-tight text-[#0F172A]">
+          {course.title}
+        </h3>
+
+        {course.description && (
+          <p className="mt-1.5 line-clamp-2 text-sm font-medium leading-relaxed text-[#64748B]">
+            {course.description}
+          </p>
+        )}
+
+        {/* Mini stats */}
+        <div className="mt-5 flex gap-2">
+          <MiniStat icon={BookOpen} value={course.lesson_count} label="Lessons" color="#0B7A5A" />
+          <MiniStat icon={FileText} value={course.material_count} label="Materials" color="#2563EB" />
+          <MiniStat icon={Users} value={course.enrolled_students} label="Students" color="#F97316" />
+        </div>
+
+        {/* CTA */}
+        <button
+          type="button"
+          onClick={() => router.push(`/trainer/lms/${course.id}`)}
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-[#CFE8DF] bg-[#F0FAF6] py-2.5 text-sm font-black text-[#0B7A5A] transition-all duration-150 hover:border-[#0B7A5A] hover:bg-[#E2F5EE] active:scale-[0.99]"
+        >
+          <span>Open Course</span>
+          <ChevronRight size={14} />
+        </button>
       </div>
     </div>
   )
 }
+
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+
+function PageSkeleton() {
+  return (
+    <div className="space-y-7 animate-pulse">
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <div className="h-9 w-20 rounded bg-gray-200" />
+          <div className="h-4 w-72 rounded bg-gray-200" />
+        </div>
+        <div className="h-10 w-24 rounded-lg bg-gray-200" />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="h-[116px] rounded-xl border border-gray-100 bg-gray-50" />
+        ))}
+      </div>
+      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+        {[0, 1].map((i) => (
+          <div key={i} className="h-64 rounded-xl border border-gray-100 bg-white" />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─── Error banner ─────────────────────────────────────────────────────────────
 
 function ErrorBanner({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
@@ -100,46 +253,33 @@ function ErrorBanner({ message, onRetry }: { message: string; onRetry: () => voi
   )
 }
 
+// ─── Main component ───────────────────────────────────────────────────────────
+
 export function TrainerLmsPage() {
-  const {
-    courses,
-    selectedCourse,
-    lessons,
-    loading,
-    lessonsLoading,
-    error,
-    data,
-    refresh,
-    selectCourse,
-    editLesson,
-    deleteLesson,
-  } = useTrainerLms()
+  const { courses, loading, error, data, refresh } = useTrainerLms()
 
   const connected = data?.connected === true
   const summary = data?.summary
-  const canCreate = data?.can_create_courses === true
 
   if (loading) return <PageSkeleton />
   if (error) return <ErrorBanner message={error} onRetry={refresh} />
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-7">
+
+      {/* ── Header ──────────────────────────────────────────────────────── */}
       <section className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-black tracking-normal text-[#020617] sm:text-3xl">LMS</h2>
-          <p className="mt-1.5 text-sm font-semibold text-[#475569]">
+          <h2 className="text-3xl font-black tracking-tight text-[#0F172A]">LMS</h2>
+          <p className="mt-1 text-sm font-medium text-[#64748B]">
             Manage trainer-owned courses, lessons, and learning materials.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            disabled={!canCreate}
-            className={`inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-black transition ${
-              canCreate
-                ? "bg-[#0B7A5A] text-white shadow-sm hover:bg-[#096747]"
-                : "border border-[#D0DFDA] bg-white text-[#64748B] opacity-60 cursor-not-allowed"
-            }`}
+            disabled
+            className="inline-flex h-10 cursor-not-allowed items-center justify-center gap-2 rounded-lg border border-[#E2E8F0] bg-white px-4 text-sm font-black text-[#CBD5E1]"
           >
             <Plus size={14} />
             <span>Create Course</span>
@@ -147,7 +287,7 @@ export function TrainerLmsPage() {
           <button
             type="button"
             onClick={refresh}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[#D0DFDA] bg-white px-4 text-sm font-black text-[#0B7A5A] transition hover:border-[#0B7A5A] hover:bg-[#E8F6F0] outline-none"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[#D0DFDA] bg-white px-4 text-sm font-black text-[#0B7A5A] outline-none transition hover:border-[#0B7A5A] hover:bg-[#E8F6F0]"
           >
             <RefreshCw size={14} />
             <span>Refresh</span>
@@ -155,6 +295,7 @@ export function TrainerLmsPage() {
         </div>
       </section>
 
+      {/* ── KPI cards ───────────────────────────────────────────────────── */}
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KPICard
           label="My Courses"
@@ -186,31 +327,19 @@ export function TrainerLmsPage() {
         />
       </section>
 
+      {/* ── Course grid ─────────────────────────────────────────────────── */}
       {!connected && courses.length === 0 ? (
         <TrainerLmsEmptyState message="No trainer-owned courses found." />
       ) : (
-        <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
-          <div className="space-y-5">
-            <TrainerCourseList
-              courses={courses}
-              selectedCourseId={selectedCourse?.id ?? null}
-              onSelectCourse={selectCourse}
-              connected={connected}
-            />
-            <TrainerLessonList
-              course={selectedCourse}
-              lessons={lessons}
-              loading={lessonsLoading}
-              connected={connected}
-              onEditLesson={editLesson}
-              onDeleteLesson={deleteLesson}
-            />
+        <section>
+          <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">
+            My Courses · {courses.length}
+          </p>
+          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            {courses.map((course) => (
+              <CourseCard key={course.id} course={course} />
+            ))}
           </div>
-          <TrainerMaterialUploadPanel
-            course={selectedCourse}
-            uploadApiConnected={data?.upload_api_connected === true}
-            onUploaded={refresh}
-          />
         </section>
       )}
     </div>

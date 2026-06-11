@@ -92,10 +92,7 @@ function StatPill({
 function PageSkeleton() {
   return (
     <div className="space-y-6 animate-pulse">
-      {/* Back nav */}
       <div className="h-4 w-32 rounded bg-gray-200" />
-
-      {/* Course header card */}
       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-[0_8px_24px_rgba(15,23,42,0.035)]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-3 flex-1">
@@ -113,8 +110,6 @@ function PageSkeleton() {
           ))}
         </div>
       </div>
-
-      {/* Main grid */}
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="h-80 rounded-lg border border-gray-200 bg-white" />
         <div className="h-80 rounded-lg border border-gray-200 bg-white" />
@@ -178,17 +173,21 @@ export function TrainerLmsCourseDetailPage({ courseId }: { courseId: string }) {
   const {
     course,
     lessons,
+    materials,
     loading,
     lessonsLoading,
+    materialsLoading,
     statusUpdating,
     error,
     mutationError,
+    uploadError,
     connected,
     uploadApiConnected,
     refresh,
     editLesson,
     deleteLesson,
     updateCourseStatus,
+    uploadMaterial,
   } = useTrainerLmsCourse(courseId)
 
   if (loading) return <PageSkeleton />
@@ -200,6 +199,7 @@ export function TrainerLmsCourseDetailPage({ courseId }: { courseId: string }) {
 
   return (
     <div className="space-y-6">
+
       {/* ── Back nav ────────────────────────────────────────────────────── */}
       <Link
         href="/trainer/lms"
@@ -212,10 +212,10 @@ export function TrainerLmsCourseDetailPage({ courseId }: { courseId: string }) {
       {/* ── Course header card ───────────────────────────────────────────── */}
       <section className="rounded-xl border border-[#E3ECE8] bg-white p-6 shadow-[0_8px_24px_rgba(15,23,42,0.035)]">
         <div className="flex flex-wrap items-start justify-between gap-4">
+
           {/* Left: title + meta */}
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              {/* Status badge */}
               <span
                 className="rounded-full border px-2.5 py-0.5 text-xs font-black"
                 style={{
@@ -227,7 +227,6 @@ export function TrainerLmsCourseDetailPage({ courseId }: { courseId: string }) {
                 {status.label}
               </span>
 
-              {/* Difficulty badge */}
               {difficulty && (
                 <span
                   className="rounded-full border px-2.5 py-0.5 text-xs font-black"
@@ -241,7 +240,6 @@ export function TrainerLmsCourseDetailPage({ courseId }: { courseId: string }) {
                 </span>
               )}
 
-              {/* Display code */}
               {course.display_code && (
                 <span className="rounded-full border border-[#E3ECE8] bg-[#F8FAFC] px-2.5 py-0.5 text-xs font-bold text-[#64748B]">
                   {course.display_code}
@@ -259,7 +257,6 @@ export function TrainerLmsCourseDetailPage({ courseId }: { courseId: string }) {
               </p>
             )}
 
-            {/* Duration + created_at */}
             <div className="flex flex-wrap items-center gap-4 pt-1">
               {course.duration && (
                 <span className="flex items-center gap-1.5 text-xs font-semibold text-[#64748B]">
@@ -278,7 +275,6 @@ export function TrainerLmsCourseDetailPage({ courseId }: { courseId: string }) {
 
           {/* Right: status toggle + refresh */}
           <div className="flex shrink-0 items-center gap-2">
-            {/* Publish / Unpublish */}
             {connected && (
               <button
                 type="button"
@@ -311,7 +307,6 @@ export function TrainerLmsCourseDetailPage({ courseId }: { courseId: string }) {
               </button>
             )}
 
-            {/* Refresh */}
             <button
               type="button"
               onClick={refresh}
@@ -352,7 +347,7 @@ export function TrainerLmsCourseDetailPage({ courseId }: { courseId: string }) {
           />
         </div>
 
-        {/* Mutation error (non-fatal, shown below the header) */}
+        {/* Mutation error */}
         {mutationError && (
           <div className="mt-4 rounded-lg border border-[#FCA5A5] bg-[#FEF2F2] px-4 py-2.5 text-sm font-semibold text-[#B91C1C]">
             {mutationError}
@@ -374,7 +369,10 @@ export function TrainerLmsCourseDetailPage({ courseId }: { courseId: string }) {
         <TrainerMaterialUploadPanel
           course={course}
           uploadApiConnected={uploadApiConnected}
-          onUploaded={refresh}
+          materials={materials}
+          materialsLoading={materialsLoading}
+          uploadMaterial={uploadMaterial}
+          uploadError={uploadError}
         />
       </section>
     </div>
