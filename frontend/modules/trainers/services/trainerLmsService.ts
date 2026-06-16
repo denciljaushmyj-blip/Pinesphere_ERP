@@ -13,6 +13,7 @@ import type {
   TrainerLmsCourseUpdate,
   TrainerLmsFeatureStatus,
   TrainerLmsLesson,
+  TrainerLmsLessonCreate,
   TrainerLmsLessonUpdate,
   TrainerLmsApiResponse,
   TrainerMaterialUploadInput,
@@ -293,6 +294,32 @@ export async function getTrainerCourseLessons(courseId: string): Promise<Trainer
 }
 
 // ─── Lesson mutation functions ────────────────────────────────────────────────
+
+/**
+ * POST /api/v1/trainer/lms/courses/{courseId}/lessons
+ * Creates a lesson for a trainer-owned course.
+ * Returns the created lesson normalised from the server response.
+ */
+export async function createTrainerLesson(
+  courseId: string,
+  payload: TrainerLmsLessonCreate
+): Promise<TrainerLmsLesson> {
+  const response = await fetchWithAuth(
+    `/api/v1/trainer/lms/courses/${encodeURIComponent(courseId)}/lessons`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }
+  )
+
+  if (!response.ok) {
+    throw new Error(await readError(response))
+  }
+
+  const data = await response.json()
+  return normalizeLesson(data as Record<string, unknown>)
+}
 
 /**
  * PATCH /api/v1/trainer/lms/courses/{courseId}/lessons/{lessonId}

@@ -15,47 +15,18 @@ Last Updated: Auto Generated
 # Keeping imports together makes dependencies easy to review.
 # =====================================================
 
-import os
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
-from app.api.attendance import router as attendance_router
-from app.api.auth import router as auth_router, users_router, v1_auth_router
-from app.api.branches import router as branches_router
-from app.api.branch_admin import router as branch_admin_router
-from app.api.dashboard import router as dashboard_router
-from app.api.lms import router as lms_router
+from app.core.config import settings as app_settings
 from app.db.database import Base, engine
 
 # Import models before create_all so SQLAlchemy metadata is fully registered.
-from app.models import attendance, branch, lms, token, trainer_lesson_material, user, crm, finance, history  # noqa: F401
+from app.models import attendance, branch, lms, token, trainer, user, crm, finance, history  # noqa: F401
 from app.models import settings  # noqa: F401
 from app.models import franchise, hr, operations  # noqa: F401
 
-from app.api.crm import router as crm_router
-from app.api.finance import router as finance_router
-from app.api.history import router as history_router
-from app.api.security import router as security_router
-from app.api.ai import router as ai_router
-from app.api.settings import router as settings_router
-from app.api.franchise import router as franchise_router
-from app.api.hr import router as hr_router
-from app.api.navigation import router as navigation_router
-from app.api.operations import router as operations_router
-from app.api.profile import router as profile_router
-from app.api.reports import router as reports_router
-from app.api.role_dashboards import router as role_dashboards_router
-from app.api.v1.trainer import router as v1_trainer_router
-
-# Optional feature integrated from main1.py.
-# Kept optional so the stable backend does not fail to start if the module
-# has not yet been copied into app/api/demo_otp.py.
-try:
-    from app.api.demo_otp import router as demo_otp_router
-except ModuleNotFoundError:
-    demo_otp_router = None
+from app.api.v1 import include_v1_routers
 
 
 # =====================================================
@@ -80,7 +51,11 @@ app = FastAPI(title="Pinesphere ERP", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=[
+        origin.strip()
+        for origin in app_settings.CORS_ALLOWED_ORIGINS.split(",")
+        if origin.strip()
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -94,33 +69,7 @@ app.add_middleware(
 # Existing production routers are preserved and new routers are added safely.
 # =====================================================
 
-app.include_router(auth_router)
-app.include_router(v1_auth_router)
-app.include_router(users_router)
-app.include_router(dashboard_router)
-app.include_router(branches_router)
-app.include_router(branch_admin_router)
-app.include_router(lms_router)
-app.include_router(attendance_router)
-app.include_router(crm_router)
-app.include_router(finance_router)
-app.include_router(history_router)
-app.include_router(security_router)
-app.include_router(ai_router)
-app.include_router(settings_router)
-app.include_router(franchise_router)
-app.include_router(hr_router)
-app.include_router(navigation_router)
-app.include_router(operations_router)
-app.include_router(profile_router)
-app.include_router(reports_router)
-app.include_router(role_dashboards_router)
-app.include_router(v1_trainer_router)
-
-# Integrated from main1.py: demo OTP routes.
-# Included only when app.api.demo_otp exists.
-if demo_otp_router is not None:
-    app.include_router(demo_otp_router)
+include_v1_routers(app)
 
 
 # =====================================================
@@ -132,12 +81,6 @@ if demo_otp_router is not None:
 # No auth is enforced at the static layer — access is controlled by the
 # API routes that return file URLs.
 # =====================================================
-
-UPLOADS_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads")
-os.makedirs(UPLOADS_DIR, exist_ok=True)
-
-app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
-
 
 # =====================================================
 # SECTION: ROUTES AND ENDPOINTS

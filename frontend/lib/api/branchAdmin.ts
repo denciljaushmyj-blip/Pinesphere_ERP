@@ -1,4 +1,4 @@
-import { API_URL, apiRequest, getStoredSessionValue, parseRequestError, refreshStoredAccessToken } from "@/app/shared/api"
+import { API_URL, apiRequest, getStoredSessionValue, parseRequestError, refreshStoredAccessToken } from "@/lib/api"
 
 type QueryValue = string | number | boolean | null | undefined
 type QueryParams = Record<string, QueryValue>
@@ -177,18 +177,24 @@ export type FeeReceiptRecord = {
 }
 
 export type BatchRecord = {
+  id?: string
   branch_id: string | null
+  name?: string
   batch: string
   batch_name: string
   course_id?: string
   course: string
+  course_title?: string
   trainer_id?: string
   trainer: string
+  trainers?: Array<{ trainer_id: string; trainer_name: string; full_name?: string; email?: string | null }>
   capacity: number
   enrolled: number
   available_seats?: number
   schedule: string
+  schedule_json?: Record<string, unknown>
   mode?: string
+  status?: string
   timings?: string[]
 }
 
@@ -397,17 +403,23 @@ export function createBatch(payload: Partial<BatchRecord>) {
   return request<BatchRecord>("/batches", undefined, json("POST", payload))
 }
 
-export function updateBatch(batchName: string, payload: Partial<BatchRecord>) {
-  return request<BatchRecord>(`/batches/${encodeURIComponent(batchName)}`, undefined, json("PUT", payload))
+function batchIdentifier(batch: BatchRecord | string) {
+  return typeof batch === "string" ? batch : batch.id || batch.batch_name || batch.batch
 }
 
-export function assignTrainer(payload: QueryParams & { batch_name?: string; batch?: string }) {
-  const batchName = encodeURIComponent(String(payload.batch_name ?? payload.batch ?? ""))
-  return request<Record<string, unknown>>(`/batches/${batchName}/assign-trainer`, undefined, json("PUT", payload))
+export function updateBatch(batch: BatchRecord | string, payload: Partial<BatchRecord>) {
+  return request<BatchRecord>(`/batches/${encodeURIComponent(batchIdentifier(batch))}`, undefined, json("PUT", payload))
 }
 
-export function transferBatchStudent(batchName: string, payload: QueryParams) {
-  return request<StudentRecord>(`/batches/${encodeURIComponent(batchName)}/transfer-student`, undefined, json("PUT", payload))
+export function assignTrainer(payload: QueryParams & { batch_id?: string; batch_name?: string; batch?: string }) {
+  const batch = encodeURIComponent(String(payload.batch_id ?? payload.batch_name ?? payload.batch ?? ""))
+  return request<Record<string, unknown>>(`/batches/${batch}/assign-trainer`, undefined, json("PUT", payload))
+}
+
+export function transferBatchStudent(batch: BatchRecord | string, payload: QueryParams & { target_batch_id?: string }) {
+  const identifier = encodeURIComponent(batchIdentifier(batch))
+  const method = typeof batch !== "string" && batch.id ? "POST" : "PUT"
+  return request<StudentRecord>(`/batches/${identifier}/transfer-student`, undefined, json(method, payload))
 }
 
 export function getLmsOverview() {

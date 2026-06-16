@@ -40,13 +40,13 @@ Default login:
 
 ```text
 Email: admin@pinesphere.com
-Password: Admin@123
+Password: set via SEED_SUPERADMIN_PASSWORD before running the seed script
 ```
 
 Database connection is in `.env`:
 
 ```text
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/pinesphere_erp
+DATABASE_URL=postgresql://pinesphere_user:REPLACE_ME@db.example.com:5432/pinesphere_erp
 ```
 
 Make sure PostgreSQL is running and the `pinesphere_erp` database exists.

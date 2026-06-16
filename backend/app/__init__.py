@@ -18,4 +18,4 @@ Last Updated: Auto Generated
 from app.models.crm import AdmissionDocument, Lead
 from app.models.finance import Invoice, Payment
 from app.models.batch import Batch, BatchTrainerAssignment, BatchStudentEnrollment  # noqa: F401
-from app.models.trainer_task import TrainerTask  # noqa: F401
+from app.models.trainer import TrainerTask  # noqa: F401

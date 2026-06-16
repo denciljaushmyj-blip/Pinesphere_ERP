@@ -21,7 +21,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 
-import { API_URL, getStoredSessionValue, storeSessionValue } from "@/app/shared/api"
+import { API_URL, getStoredSessionValue, storeSessionValue } from "@/lib/api"
 import { ProfileAvatarDropdown, getProfileInitials, type ProfileDropdownUser } from "@/components/profile/ProfileAvatarDropdown"
 
 /* =====================================================

@@ -19,7 +19,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 
 import { readBranchAdminSession } from "./BranchAdminShell"
 import { getAttendanceDefaulters, getAttendanceRecords } from "@/lib/api/branchAdmin"
-import { resolveBranchScope } from "./branchAdminData"
+import { resolveBranchScope } from "@/lib/api/branchAdminData"
 import {
   fetchBranchAttendance,
   getMockBranchAttendance,
@@ -27,7 +27,7 @@ import {
   type AttendanceAlert,
   type BranchAttendanceDashboard,
   type TrainerCompliance,
-} from "./branchAdminAttendanceService"
+} from "@/lib/api/branchAdminAttendance"
 
 function normalizeAttendanceData(response: Partial<BranchAttendanceDashboard>, fallback: BranchAttendanceDashboard): BranchAttendanceDashboard {
   return {

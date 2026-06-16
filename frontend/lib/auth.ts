@@ -14,6 +14,7 @@ import { AUTH_STORAGE_KEYS, ROLE_ALIASES, ROLE_DASHBOARD_PATHS } from "./constan
 const ACCESS_TOKEN_KEY = AUTH_STORAGE_KEYS.accessToken;
 const REFRESH_TOKEN_KEY = AUTH_STORAGE_KEYS.refreshToken;
 const USER_KEY = AUTH_STORAGE_KEYS.user;
+const PROFILE_KEY = "pinesphere_profile";
 const REMEMBER_ME_KEY = AUTH_STORAGE_KEYS.rememberMe;
 
 const ROLE_PATHS: Record<UserRole, string> = ROLE_DASHBOARD_PATHS;
@@ -101,6 +102,7 @@ export function storeSession(session: AuthSession): void {
   storage.setItem(ACCESS_TOKEN_KEY, session.accessToken);
   storage.setItem(REFRESH_TOKEN_KEY, session.refreshToken);
   storage.setItem(USER_KEY, JSON.stringify(user));
+  storage.setItem(PROFILE_KEY, JSON.stringify(user));
   storage.setItem(REMEMBER_ME_KEY, String(session.rememberMe));
 
   if (session.rememberMe) {
@@ -116,13 +118,13 @@ export function getStoredSession(): AuthSession | null {
 
   let accessToken = storage.getItem(ACCESS_TOKEN_KEY);
   let refreshToken = storage.getItem(REFRESH_TOKEN_KEY);
-  let userStr = storage.getItem(USER_KEY);
+  let userStr = storage.getItem(USER_KEY) ?? storage.getItem(PROFILE_KEY);
 
   if (!accessToken) {
     storage = window.sessionStorage;
     accessToken = storage.getItem(ACCESS_TOKEN_KEY);
     refreshToken = storage.getItem(REFRESH_TOKEN_KEY);
-    userStr = storage.getItem(USER_KEY);
+    userStr = storage.getItem(USER_KEY) ?? storage.getItem(PROFILE_KEY);
   }
 
   if (!accessToken || !refreshToken || !userStr) return null;
@@ -141,11 +143,13 @@ export function clearAuthSession(): void {
   window.localStorage.removeItem(ACCESS_TOKEN_KEY);
   window.localStorage.removeItem(REFRESH_TOKEN_KEY);
   window.localStorage.removeItem(USER_KEY);
+  window.localStorage.removeItem(PROFILE_KEY);
   window.localStorage.removeItem(REMEMBER_ME_KEY);
 
   window.sessionStorage.removeItem(ACCESS_TOKEN_KEY);
   window.sessionStorage.removeItem(REFRESH_TOKEN_KEY);
   window.sessionStorage.removeItem(USER_KEY);
+  window.sessionStorage.removeItem(PROFILE_KEY);
   window.sessionStorage.removeItem(REMEMBER_ME_KEY);
 
   clearStoredSession();

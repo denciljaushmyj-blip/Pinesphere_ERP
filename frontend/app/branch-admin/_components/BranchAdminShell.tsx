@@ -18,11 +18,11 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 
-import { getStoredSession, normalizeUserRole, storeSession, type UserProfile } from "@/app/shared/auth"
-import { getStoredSessionValue } from "@/app/shared/api"
+import { getStoredSession, normalizeUserRole, storeSession, type UserProfile } from "@/lib/auth"
+import { getStoredSessionValue } from "@/lib/api"
 import { ProfileAvatarDropdown } from "@/components/profile/ProfileAvatarDropdown"
 import { getBranchContext } from "@/lib/api/branchAdminOptions"
-import { resolveBranchScope, type BranchScope } from "./branchAdminData"
+import { resolveBranchScope, type BranchScope } from "@/lib/api/branchAdminData"
 
 type BranchAdminSession = {
   accessToken: string
@@ -302,7 +302,7 @@ export function BranchAdminShell({ children }: { children: ReactNode }) {
                 <p className="max-w-40 truncate text-sm font-black leading-tight text-[#0F172A]">{displayName}</p>
                 <p className="whitespace-nowrap text-xs font-semibold text-[#64748B]">Branch Admin</p>
               </div>
-              <ProfileAvatarDropdown user={session.user} compact />
+              <ProfileAvatarDropdown user={session.user} compact isHydrated={ready} />
             </div>
           </div>
         </header>

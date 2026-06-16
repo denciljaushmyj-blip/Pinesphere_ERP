@@ -1,4 +1,4 @@
-import { apiRequest, getStoredSessionValue } from "@/app/shared/api"
+import { apiRequest, getStoredSessionValue } from "@/lib/api"
 import type { BatchRecord, InvoiceRecord, StudentRecord } from "./branchAdmin"
 
 export type BranchContext = {

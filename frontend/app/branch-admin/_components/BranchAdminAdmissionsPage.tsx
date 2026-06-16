@@ -21,12 +21,12 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { readBranchAdminSession } from "./BranchAdminShell"
 import { BranchAdminSelect, type BranchAdminSelectOption } from "./BranchAdminSelect"
 import { approveAdmission as approveAdmissionApi, assignAdmissionBatch, getAdmissionOptions, rejectAdmission as rejectAdmissionApi, type AdmissionOptions } from "@/lib/api/branchAdmin"
-import { resolveBranchScope } from "./branchAdminData"
+import { resolveBranchScope } from "@/lib/api/branchAdminData"
 import {
   fetchBranchAdmissions,
   type AdmissionRecord,
   type AdmissionStatus,
-} from "./branchAdminAdmissionsService"
+} from "@/lib/api/branchAdminAdmissions"
 
 type RejectState = { admission: AdmissionRecord; reason: string }
 type BatchState = { admission: AdmissionRecord; course_id: string; course: string; batch: string; trainer_id: string; trainer: string; timing: string }

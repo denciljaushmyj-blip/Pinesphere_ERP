@@ -19,7 +19,7 @@ Last Updated: Auto Generated
 import { AnimatePresence, motion } from "framer-motion"
 import { useState } from "react"
 
-import { API_URL } from "@/app/shared/api"
+import { API_URL } from "@/lib/api"
 import { useAuthModalStore } from "@/store/authModalStore"
 
 import { AuthBrandHeader, AuthDivider, AuthGoogleButton } from "./AuthParts"

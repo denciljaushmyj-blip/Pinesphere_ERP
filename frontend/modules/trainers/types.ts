@@ -454,7 +454,23 @@ export interface TrainerLmsLesson {
   max_marks: number
   sort_order: number
   is_preview: boolean
-  created_at: string | null
+  created_at?: string | null
+}
+
+
+/**
+ * Payload for POST /api/v1/trainer/lms/courses/{courseId}/lessons
+ * Mirrors the trainer-scoped LessonCreate schema while preserving
+ * optional legacy URL fields for backward compatibility.
+ */
+export interface TrainerLmsLessonCreate {
+  title: string
+  summary?: string | null
+  content?: string | null
+  sort_order?: number
+  video_url?: string | null
+  pdf_url?: string | null
+  assignment_url?: string | null
 }
 
 
@@ -665,7 +681,7 @@ export interface TrainerLessonMaterial {
   lesson_id: string | null
   trainer_id: string
   filename: string
-  /** Relative URL served by the StaticFiles mount, e.g. /uploads/lms/... */
+  /** Protected API URL used to download the material with auth headers. */
   file_url: string
   /** File size in bytes; null if not recorded */
   file_size: number | null

@@ -19,4 +19,4 @@ from app.models.crm import AdmissionDocument, Lead
 from app.models.finance import Invoice, Payment
 from app.models.branch import Branch
 from app.models.batch import Batch, BatchTrainerAssignment, BatchStudentEnrollment 
-from app.models.trainer_task import TrainerTask  
+from app.models.trainer import TrainerTask

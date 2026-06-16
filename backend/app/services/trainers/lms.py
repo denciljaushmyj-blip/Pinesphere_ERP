@@ -20,7 +20,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.models.lms import Course, Enrollment, Lesson, Quiz
-from app.models.trainer_lesson_material import TrainerLessonMaterial
+from app.models.trainer import TrainerLessonMaterial
 from app.schemas.lms import LessonCreate
 from app.schemas.trainer import (
     TrainerLessonMaterialListResponse,
@@ -165,12 +165,33 @@ def _material_response(material: TrainerLessonMaterial) -> TrainerLessonMaterial
         lesson_id=material.lesson_id,
         trainer_id=material.trainer_id,
         filename=material.filename,
-        file_url=material.file_url,
+        file_url=f"/api/v1/trainer/lms/materials/{material.id}/download",
         file_size=material.file_size,
         content_type=material.content_type,
         download_count=material.download_count,
         created_at=material.created_at.isoformat() if material.created_at else None,
     )
+
+
+def material_storage_path(material: TrainerLessonMaterial) -> str:
+    """Resolve an LMS material to a local file path without exposing /uploads."""
+    deterministic_path = os.path.join(
+        UPLOADS_ROOT,
+        material.trainer_id,
+        material.course_id,
+        f"{material.id}_{material.filename}",
+    )
+    if os.path.isfile(deterministic_path):
+        return deterministic_path
+
+    if material.file_url.startswith("/uploads/lms/"):
+        relative_path = material.file_url.removeprefix("/uploads/lms/").replace("/", os.sep)
+        legacy_path = os.path.abspath(os.path.join(UPLOADS_ROOT, relative_path))
+        uploads_root = os.path.abspath(UPLOADS_ROOT)
+        if legacy_path.startswith(uploads_root + os.sep) and os.path.isfile(legacy_path):
+            return legacy_path
+
+    raise HTTPException(status_code=404, detail="Material file not found")
 
 
 # =====================================================
@@ -395,19 +416,20 @@ async def upload_trainer_material(
     os.makedirs(dest_dir, exist_ok=True)
 
     safe_original = os.path.basename(file.filename or "upload")
-    unique_filename = f"{uuid.uuid4().hex}_{safe_original}"
+    material_id = str(uuid.uuid4())
+    unique_filename = f"{material_id}_{safe_original}"
     dest_path = os.path.join(dest_dir, unique_filename)
 
     # 6. Write to disk.
     with open(dest_path, "wb") as fh:
         fh.write(file_bytes)
 
-    # 7. Build the public URL path (matches the StaticFiles mount in main.py).
-    file_url = f"/uploads/lms/{trainer_id}/{course_id}/{unique_filename}"
+    # 7. Build the protected API URL path.
+    file_url = f"/api/v1/trainer/lms/materials/{material_id}/download"
 
     # 8. Insert metadata row into trainer_lesson_materials.
     material = TrainerLessonMaterial(
-        id=str(uuid.uuid4()),
+        id=material_id,
         course_id=course_id,
         lesson_id=lesson_id,
         trainer_id=trainer_id,

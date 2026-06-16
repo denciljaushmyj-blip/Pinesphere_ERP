@@ -41,8 +41,8 @@ import {
   YAxis,
 } from "recharts"
 
-import { apiRequest, getStoredSessionValue } from "@/app/shared/api"
-import { getRoleDashboardPath, getStoredSession, normalizeUserRole, type UserProfile, type UserRole } from "@/app/shared/auth"
+import { apiRequest, getStoredSessionValue } from "@/lib/api"
+import { getRoleDashboardPath, getStoredSession, normalizeUserRole, type UserProfile, type UserRole } from "@/lib/auth"
 import { ProfileAvatarDropdown } from "@/components/profile/ProfileAvatarDropdown"
 import {
   dashboardColors,

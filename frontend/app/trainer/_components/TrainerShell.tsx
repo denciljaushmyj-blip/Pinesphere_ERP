@@ -20,7 +20,14 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 
-import { getStoredSession, normalizeUserRole, type UserProfile } from "@/app/shared/auth"
+import {
+  clearAuthSession,
+  getCurrentUser,
+  getRoleDashboardPath,
+  getStoredSession,
+  normalizeUserRole,
+  type UserProfile,
+} from "@/lib/auth"
 import { ProfileAvatarDropdown } from "@/components/profile/ProfileAvatarDropdown"
 import { trainerSidebar } from "@/components/sidebarConfig/trainerSidebar"
 
@@ -28,6 +35,8 @@ type TrainerSession = {
   accessToken: string
   user: UserProfile
 }
+
+type AuthState = "loading" | "authorized" | "redirecting"
 
 const iconMap: Record<string, LucideIcon> = {
   dashboard: Home,
@@ -46,69 +55,59 @@ export function TrainerShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const [session, setSession] = useState<TrainerSession | null>(null)
-  const [ready, setReady] = useState(false)
+  const [authState, setAuthState] = useState<AuthState>("loading")
   const [mobileOpen, setMobileOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
-    function loadSession() {
-      const nextSession = getStoredSession()
-      
-      // Fallback for development/preview so we are not blocked
-      if (!nextSession) {
-        const mockTrainerProfile: UserProfile = {
-          id: "mock-trainer-id",
-          email: "anitha.trainer@pinesphere.com",
-          full_name: "Anitha Trainer",
-          role: "trainer",
-          role_abbreviation: "TR",
-          branch_id: "branch-kochi",
-          branch_name: "Pinesphere Kochi",
-          is_active: true,
-          display_code: "TR001",
-          phone: "9876543210",
-        }
-        if (!cancelled) {
-          setSession({
-            accessToken: "mock-token",
-            user: mockTrainerProfile,
-          })
-          setReady(true)
-        }
-        return
-      }
+    async function loadSession() {
+      try {
+        const storedSession = getStoredSession()
 
-      const role = normalizeUserRole(nextSession.user.role) ?? normalizeUserRole(nextSession.user.role_abbreviation)
-      if (role !== "trainer") {
-        router.replace(getRoleDashboardPath(role))
-        return
-      }
+        if (!storedSession) {
+          if (!cancelled) setAuthState("redirecting")
+          router.replace("/")
+          return
+        }
 
-      if (!cancelled) {
+        const currentUser = await getCurrentUser()
+        if (cancelled) return
+
+        if (!currentUser) {
+          clearAuthSession()
+          setAuthState("redirecting")
+          router.replace("/")
+          return
+        }
+
+        const role = normalizeUserRole(currentUser.role) ?? normalizeUserRole(currentUser.role_abbreviation)
+        if (role !== "trainer") {
+          setAuthState("redirecting")
+          router.replace(getRoleDashboardPath(role))
+          return
+        }
+
+        const latestSession = getStoredSession() ?? storedSession
         setSession({
-          accessToken: nextSession.accessToken,
-          user: { ...nextSession.user, role },
+          accessToken: latestSession.accessToken,
+          user: { ...currentUser, role },
         })
-        setReady(true)
+        setAuthState("authorized")
+      } catch {
+        if (cancelled) return
+        clearAuthSession()
+        setAuthState("redirecting")
+        router.replace("/")
       }
     }
-    
-    // Help helper function to route non-trainers
-    function getRoleDashboardPath(role?: string | null): string {
-      if (!role) return "/login"
-      if (role === "branch_admin") return "/branch-admin/dashboard"
-      if (role === "super_admin") return "/super-admin/dashboard"
-      return "/login"
-    }
-
-    loadSession()
+    void loadSession()
     return () => {
       cancelled = true
     }
   }, [router])
 
-  const displayName = session?.user.full_name || "Anitha Trainer"
-  const branchName = session?.user.branch_name || "Pinesphere Kochi"
+  const displayName = session?.user.full_name || "Trainer"
+  const branchName = session?.user.branch_name || "Assigned Branch"
   const initials = useMemo(() => {
     return displayName
       .split(" ")
@@ -118,11 +117,11 @@ export function TrainerShell({ children }: { children: ReactNode }) {
       .toUpperCase() || "TR"
   }, [displayName])
 
-  if (!ready || !session) {
+  if (authState !== "authorized" || !session) {
     return (
       <main className="grid min-h-screen place-items-center bg-[#F8FAF8] text-[#071B4A]">
         <div className="rounded-lg border border-[#DDE9E4] bg-white px-5 py-4 text-sm font-black shadow-sm">
-          Loading Trainer Portal...
+          {authState === "redirecting" ? "Redirecting..." : "Loading Trainer Portal..."}
         </div>
       </main>
     )
@@ -249,7 +248,7 @@ export function TrainerShell({ children }: { children: ReactNode }) {
                 </p>
                 <p className="whitespace-nowrap text-xs font-semibold text-[#64748B]">Trainer</p>
               </div>
-              <ProfileAvatarDropdown user={session.user} compact />
+              <ProfileAvatarDropdown user={session.user} isHydrated={true} compact />
             </div>
           </div>
         </header>

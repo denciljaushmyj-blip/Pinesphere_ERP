@@ -42,7 +42,7 @@ from app.models.token import RefreshToken, AuthActionToken, AuditLog, SecurityEv
 # Centralizing these values helps avoid repeated magic strings or numbers.
 # =====================================================
 
-DEMO_PASSWORD = "Admin@123"
+SEED_SUPERADMIN_PASSWORD = os.getenv("SEED_SUPERADMIN_PASSWORD")
 
 DEMO_USERS = [
     ("sa@pinesphere.com", "Super Admin", UserRole.SUPER_ADMIN, None),
@@ -52,12 +52,10 @@ DEMO_USERS = [
 db = SessionLocal()
 
 try:
-    demo_password_hash = hash_password(DEMO_PASSWORD)
+    if not SEED_SUPERADMIN_PASSWORD:
+        raise RuntimeError("SEED_SUPERADMIN_PASSWORD is required")
 
-    existing_users = db.query(User).all()
-    for user in existing_users:
-        user.hashed_password = demo_password_hash
-        print(f"Reset password for existing user: {user.email}")
+    demo_password_hash = hash_password(SEED_SUPERADMIN_PASSWORD)
 
     for email, full_name, role, branch_id in DEMO_USERS:
         existing = db.query(User).filter(User.email == email).first()

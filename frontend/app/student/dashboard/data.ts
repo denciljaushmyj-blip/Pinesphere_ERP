@@ -7,7 +7,7 @@ Author      : Pinesphere Development Team
 Last Updated: Auto Generated
 ===================================================== */
 
-import { apiRequest, getStoredSessionValue } from "@/app/shared/api"
+import { apiRequest, getStoredSessionValue } from "@/lib/api"
 
 /* =====================================================
    SECTION: TYPES AND INTERFACES
@@ -19,12 +19,13 @@ import { apiRequest, getStoredSessionValue } from "@/app/shared/api"
 export type StudentCourse = {
   id: string
   title: string
-  track: string
-  trainer: string
-  trainerInitials: string
+  track: string | null
+  trainer: string | null
+  trainerInitials: string | null
   progress: number
   remainingLessons: number
-  nextClass: string
+  totalLessons: number
+  nextClass: string | null
   difficulty: "Beginner" | "Intermediate" | "Advanced"
   accent: string
 }
@@ -67,6 +68,51 @@ export type StudentDashboardData = {
   }
 }
 
+export type StudentMaterial = {
+  id: string
+  lesson_id: string | null
+  filename: string
+  file_url: string
+  file_size: number | null
+  content_type: string
+  download_count: number
+  created_at: string
+}
+
+export type StudentLesson = {
+  id: string
+  course_id: string
+  title: string
+  summary: string | null
+  content: string | null
+  video_url: string | null
+  pdf_url: string | null
+  assignment_url: string | null
+  content_type: string
+  due_at: string | null
+  max_marks: number
+  sort_order: number
+  is_preview: boolean
+  is_completed: boolean
+  completed_at: string | null
+  created_at: string
+  materials: StudentMaterial[]
+}
+
+export type StudentCourseDetail = {
+  id: string
+  title: string
+  description: string
+  thumbnail_url: string | null
+  trainer_id: string | null
+  duration: string | null
+  difficulty_level: string
+  status: string
+  created_at: string
+  lessons: StudentLesson[]
+}
+
+
 export const studentDashboardApiEndpoints = {
   dashboard: "/api/student/dashboard",
   profile: "/profile/me",
@@ -74,6 +120,8 @@ export const studentDashboardApiEndpoints = {
   assignments: "/student/assignments",
   certificates: "/student/certificates",
   placementReadiness: "/student/placement-readiness",
+  courseDetail: (courseId: string) => `/lms/student/courses/${courseId}`,
+  lessonProgress: (lessonId: string) => `/lms/lessons/${lessonId}/progress`,
 }
 
 export const mockStudentDashboardData: StudentDashboardData = {
@@ -90,6 +138,7 @@ export const mockStudentDashboardData: StudentDashboardData = {
       trainerInitials: "NR",
       progress: 68,
       remainingLessons: 9,
+      totalLessons: 28,
       nextClass: "Tomorrow, 6:00 PM",
       difficulty: "Beginner",
       accent: "var(--pinesphere-green)",
@@ -102,6 +151,7 @@ export const mockStudentDashboardData: StudentDashboardData = {
       trainerInitials: "AM",
       progress: 52,
       remainingLessons: 16,
+      totalLessons: 33,
       nextClass: "07 Jun, 7:30 PM",
       difficulty: "Intermediate",
       accent: "#7C3AED",
@@ -114,6 +164,7 @@ export const mockStudentDashboardData: StudentDashboardData = {
       trainerInitials: "MJ",
       progress: 34,
       remainingLessons: 24,
+      totalLessons: 36,
       nextClass: "09 Jun, 5:00 PM",
       difficulty: "Advanced",
       accent: "#F97316",
@@ -151,11 +202,58 @@ export const mockStudentDashboardData: StudentDashboardData = {
 
 export async function loadStudentDashboardData(): Promise<StudentDashboardData> {
   const accessToken = getStoredSessionValue("pinesphere_access_token")
-  if (!accessToken) return mockStudentDashboardData
+
+  if (!accessToken) {
+    throw new Error("Not authenticated")
+  }
 
   try {
-    return await apiRequest<StudentDashboardData>(studentDashboardApiEndpoints.dashboard, accessToken)
-  } catch {
-    return mockStudentDashboardData
+    const data = await apiRequest<StudentDashboardData>(
+      studentDashboardApiEndpoints.dashboard,
+      accessToken,
+    )
+    return data
+  } catch (error) {
+    console.error("Student dashboard API failed:", error)
+    throw error
   }
+}
+
+export async function loadStudentCourseDetail(courseId: string): Promise<StudentCourseDetail> {
+  const accessToken = getStoredSessionValue("pinesphere_access_token")
+
+  if (!accessToken) {
+    throw new Error("Not authenticated")
+  }
+
+  try {
+    const data = await apiRequest<StudentCourseDetail>(
+      studentDashboardApiEndpoints.courseDetail(courseId),
+      accessToken,
+    )
+    return data
+  } catch (error) {
+    console.error("Failed to load course detail:", error)
+    throw error
+  }
+}
+
+export async function updateStudentLessonProgress(
+  lessonId: string,
+  isCompleted = true,
+): Promise<{ progress_percent: number }> {
+  const accessToken = getStoredSessionValue("pinesphere_access_token")
+
+  if (!accessToken) {
+    throw new Error("Not authenticated")
+  }
+
+  return apiRequest<{ progress_percent: number }>(
+    studentDashboardApiEndpoints.lessonProgress(lessonId),
+    accessToken,
+    {
+      method: "POST",
+      body: JSON.stringify({ is_completed: isCompleted }),
+    },
+  )
 }

@@ -117,6 +117,46 @@ export async function apiRequest<T>(endpoint: string, accessToken: string, init:
   return response.json() as Promise<T>;
 }
 
+export async function openAuthenticatedFile(fileUrl: string, filename?: string) {
+  const token = getStoredSessionValue("pinesphere_access_token");
+  if (!token) {
+    clearStoredSession();
+    throw new Error("Please log in again.");
+  }
+
+  const absoluteUrl = /^https?:\/\//i.test(fileUrl)
+    ? fileUrl
+    : `${API_URL.replace(/\/$/, "")}${fileUrl.startsWith("/") ? fileUrl : `/${fileUrl}`}`;
+
+  let response = await fetch(absoluteUrl, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (response.status === 401) {
+    const refreshedToken = await refreshStoredAccessToken();
+    if (refreshedToken) {
+      response = await fetch(absoluteUrl, {
+        headers: { Authorization: `Bearer ${refreshedToken}` },
+      });
+    }
+  }
+
+  if (!response.ok) {
+    throw new Error(await parseRequestError(response));
+  }
+
+  const blob = await response.blob();
+  const blobUrl = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = blobUrl;
+  link.target = "_blank";
+  if (filename) link.download = filename;
+  link.rel = "noopener noreferrer";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60_000);
+}
+
 /* =========================================================
    SECTION: Exports
    Purpose: Public exports used across the app

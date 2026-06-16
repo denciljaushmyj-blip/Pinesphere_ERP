@@ -1,4 +1,4 @@
-import type { UserRole } from "@/app/shared/auth"
+import type { UserRole } from "@/lib/auth"
 import { branchAdminSidebar } from "@/components/sidebarConfig/branchAdminSidebar"
 import { companyHrSidebar } from "@/components/sidebarConfig/companyHrSidebar"
 import { counsellorSidebar } from "@/components/sidebarConfig/counsellorSidebar"

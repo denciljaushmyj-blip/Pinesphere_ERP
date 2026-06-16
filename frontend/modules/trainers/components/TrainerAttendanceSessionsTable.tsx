@@ -14,10 +14,26 @@ import Link from "next/link"
 
 import type { TrainerAttendanceSession } from "../types"
 
+type TrainerAttendanceTableSession = Pick<
+  TrainerAttendanceSession,
+  | "id"
+  | "title"
+  | "session_date"
+  | "batch_name"
+  | "course_name"
+  | "status"
+  | "present_count"
+  | "absent_count"
+  | "late_count"
+  | "attendance_rate"
+> & {
+  total_students?: number
+}
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface TrainerAttendanceSessionsTableProps {
-  sessions: TrainerAttendanceSession[]
+  sessions: TrainerAttendanceTableSession[]
   loading: boolean
   error: string | null
   /** Hide the Mark action — used by the history page */

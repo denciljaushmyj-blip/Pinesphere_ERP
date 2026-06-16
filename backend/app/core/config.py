@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     # FRONTEND / CORS RELATED SETTINGS
     # =====================================================
     FRONTEND_BASE_URL: str = "http://localhost:3000"
+    CORS_ALLOWED_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
 
     # =====================================================
     # EMAIL / SMTP SETTINGS

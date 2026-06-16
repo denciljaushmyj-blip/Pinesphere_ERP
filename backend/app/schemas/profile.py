@@ -15,7 +15,7 @@ Last Updated: Auto Generated
 # Keeping imports together makes dependencies easy to review.
 # =====================================================
 
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -39,6 +39,19 @@ class ProfileResponse(BaseModel):
     branch_id: str | None = None
     franchise_id: str | None = None
     profile_photo: str | None = None
+    display_code: str | None = None
+    date_of_birth: date | None = None
+    gender: str | None = None
+    address: str | None = None
+    parent_name: str | None = None
+    parent_phone: str | None = None
+    emergency_contact: str | None = None
+    course_enrolled: str | None = None
+    batch_name: str | None = None
+    trainer_name: str | None = None
+    student_status: str | None = None
+    document_status: str | None = None
+    admission_date: date | None = None
     email_verified: bool | None = None
     email_verified_at: datetime | None = None
     is_active: bool
@@ -56,6 +69,12 @@ class ProfileUpdateRequest(BaseModel):
     full_name: str | None = Field(default=None, min_length=2, max_length=160)
     phone: str | None = Field(default=None, max_length=32)
     profile_photo: str | None = Field(default=None, max_length=2_000_000)
+    date_of_birth: date | None = None
+    gender: str | None = Field(default=None, max_length=40)
+    address: str | None = Field(default=None, max_length=2_000)
+    parent_name: str | None = Field(default=None, max_length=160)
+    parent_phone: str | None = Field(default=None, max_length=32)
+    emergency_contact: str | None = Field(default=None, max_length=32)
 
 
 class ProfilePhotoRequest(BaseModel):

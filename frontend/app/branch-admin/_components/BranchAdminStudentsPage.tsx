@@ -7,7 +7,7 @@ import { readBranchAdminSession } from "./BranchAdminShell"
 import { BranchAdminSelect } from "./BranchAdminSelect"
 import { assignStudentBatch, createStudent, getBatches, getStudentProfile, getStudents, updateStudent, type BatchRecord } from "@/lib/api/branchAdmin"
 import { getBatchOptions, getCourseOptions, getStatusOptions, type BatchOption, type CourseOption, type StatusOption } from "@/lib/api/branchAdminOptions"
-import { resolveBranchScope } from "./branchAdminData"
+import { resolveBranchScope } from "@/lib/api/branchAdminData"
 
 type StudentRow = {
   branch_id: string

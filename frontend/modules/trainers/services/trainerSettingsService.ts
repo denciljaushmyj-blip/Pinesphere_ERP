@@ -10,7 +10,7 @@
  *               (MVP decision: persist to localStorage only, no API call).
  */
 
-import { apiRequest } from "@/app/shared/api"
+import { apiRequest } from "@/lib/api"
 
 // ─── Re-exports from shared service (role-agnostic) ──────────────────────────
 // NOTE: saveProfilePreferences is intentionally NOT re-exported here.
@@ -23,7 +23,7 @@ export {
   loadProfilePreferences,
   trySetAutomaticTimezone,
   type ProfilePreferences,
-} from "@/app/settings/profile/settingsProfileService"
+} from "@/lib/api/settingsProfile"
 
 // ─── Trainer-specific profile API response ────────────────────────────────────
 
@@ -164,8 +164,8 @@ export async function saveTrainerProfileSettings(
  * When the backend endpoint is ready, replace this with the shared export.
  */
 export async function saveProfilePreferences(
-  preferences: import("@/app/settings/profile/settingsProfileService").ProfilePreferences,
-): Promise<import("@/app/settings/profile/settingsProfileService").ProfilePreferences> {
+  preferences: import("@/lib/api/settingsProfile").ProfilePreferences,
+): Promise<import("@/lib/api/settingsProfile").ProfilePreferences> {
   if (typeof window !== "undefined") {
     window.localStorage.setItem(TRAINER_PREFERENCES_KEY, JSON.stringify(preferences))
   }

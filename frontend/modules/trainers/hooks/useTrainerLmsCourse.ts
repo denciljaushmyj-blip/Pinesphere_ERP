@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 
 import {
+  createTrainerLesson,
   deleteTrainerLesson,
   getCourseMaterials,
   getTrainerCourseDetail,
@@ -16,6 +17,7 @@ import type {
   TrainerLmsCourse,
   TrainerLmsCourseUpdate,
   TrainerLmsLesson,
+  TrainerLmsLessonCreate,
   TrainerLmsLessonUpdate,
   TrainerMaterialUploadInput,
 } from "../types"
@@ -46,6 +48,7 @@ export interface UseTrainerLmsCourseResult {
   uploadApiConnected: boolean
   /** Refetch course, lessons, and materials from scratch. */
   refresh: () => Promise<void>
+  createLesson: (payload: TrainerLmsLessonCreate) => Promise<void>
   editLesson: (courseId: string, lessonId: string, payload: TrainerLmsLessonUpdate) => Promise<void>
   deleteLesson: (courseId: string, lessonId: string) => Promise<void>
   /** PATCH course status to "draft" or "published". Re-throws on failure. */
@@ -91,6 +94,17 @@ export function useTrainerLmsCourse(courseId: string): UseTrainerLmsCourseResult
       setMutationError(err instanceof Error ? err.message : "Failed to reload lessons.")
     } finally {
       setLessonsLoading(false)
+    }
+  }, [])
+
+  /** Reload only the course detail; used after mutations that affect course counts. */
+  const reloadCourseDetail = useCallback(async (id: string) => {
+    try {
+      const payload = await getTrainerCourseDetail(id)
+      setCourse(payload)
+      setConnected(true)
+    } catch (err: unknown) {
+      setMutationError(err instanceof Error ? err.message : "Failed to reload course detail.")
     }
   }, [])
 
@@ -148,6 +162,26 @@ export function useTrainerLmsCourse(courseId: string): UseTrainerLmsCourseResult
   }, [refresh])
 
   // ─── Lesson mutations ───────────────────────────────────────────────────────
+
+  /**
+   * POST a new lesson, then reload lessons and course detail.
+   * Re-throws so the caller can show an inline error.
+   */
+  const createLesson = useCallback(
+    async (payload: TrainerLmsLessonCreate) => {
+      if (!courseId) return
+      setMutationError(null)
+      try {
+        await createTrainerLesson(courseId, payload)
+        await Promise.all([reloadLessons(courseId), reloadCourseDetail(courseId)])
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to create lesson."
+        setMutationError(message)
+        throw err
+      }
+    },
+    [courseId, reloadCourseDetail, reloadLessons]
+  )
 
   /**
    * PATCH the lesson, then reload the lesson list.
@@ -260,6 +294,7 @@ export function useTrainerLmsCourse(courseId: string): UseTrainerLmsCourseResult
     connected,
     uploadApiConnected,
     refresh,
+    createLesson,
     editLesson,
     deleteLesson,
     updateCourseStatus,

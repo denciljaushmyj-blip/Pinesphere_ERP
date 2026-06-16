@@ -19,6 +19,7 @@ Last Updated: Auto Generated
 from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile
+from fastapi.responses import FileResponse
 from fastapi import status
 from app.schemas.trainer import (
     TrainerAssignmentCreate,
@@ -55,7 +56,8 @@ from app.db.database import get_db
 from app.models.attendance import AttendanceRecord, AttendanceSession
 from app.models.batch import Batch, BatchStudentEnrollment, BatchTrainerAssignment
 from app.models.lms import Course, Lesson, Quiz
-from app.models.trainer_task import TrainerTask
+from app.models.trainer import TrainerTask
+from app.models.trainer import TrainerLessonMaterial
 from app.models.user import User
 
 # =====================================================
@@ -220,6 +222,34 @@ def trainer_lms_course_materials(
     from app.services.trainers.lms import get_course_materials
 
     return get_course_materials(db, current_user.id, course_id)
+
+
+@router.get("/lms/materials/{material_id}/download")
+def download_trainer_lms_material(
+    material_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles(UserRole.TRAINER)),
+):
+    from app.services.trainers.lms import material_storage_path
+
+    material = (
+        db.query(TrainerLessonMaterial)
+        .filter(
+            TrainerLessonMaterial.id == material_id,
+            TrainerLessonMaterial.trainer_id == current_user.id,
+        )
+        .first()
+    )
+    if not material:
+        raise HTTPException(status_code=404, detail="Material not found")
+
+    material.download_count = (material.download_count or 0) + 1
+    db.commit()
+    return FileResponse(
+        material_storage_path(material),
+        filename=material.filename,
+        media_type="application/octet-stream",
+    )
 
 
 @router.get("/assignments", response_model=TrainerAssignmentsResponse)

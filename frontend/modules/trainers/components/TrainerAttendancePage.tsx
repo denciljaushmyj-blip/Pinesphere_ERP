@@ -9,12 +9,15 @@
 
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { RefreshCw, Plus, X, CalendarDays, Users, Clock } from "lucide-react"
 
+import { useTrainerBatches } from "../hooks/useTrainerBatches"
+import { useTrainerLms } from "../hooks/useTrainerLms"
 import { useTrainerAttendanceSessions } from "../hooks/useTrainerAttendanceSessions"
 import { TrainerAttendanceSessionsTable } from "./TrainerAttendanceSessionsTable"
 import type { TrainerAttendanceSessionCreateBody } from "../services/trainerAttendanceService"
+import type { TrainerBatch, TrainerLmsCourse } from "../types"
 
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
 
@@ -65,6 +68,12 @@ interface NewSessionModalProps {
   open: boolean
   creating: boolean
   createError: string | null
+  batches: TrainerBatch[]
+  batchesLoading: boolean
+  batchesError: string | null
+  courses: TrainerLmsCourse[]
+  coursesLoading: boolean
+  coursesError: string | null
   onClose: () => void
   onSubmit: (body: TrainerAttendanceSessionCreateBody) => Promise<boolean>
 }
@@ -73,6 +82,12 @@ function NewSessionModal({
   open,
   creating,
   createError,
+  batches,
+  batchesLoading,
+  batchesError,
+  courses,
+  coursesLoading,
+  coursesError,
   onClose,
   onSubmit,
 }: NewSessionModalProps) {
@@ -84,6 +99,17 @@ function NewSessionModal({
   const [courseId, setCourseId] = useState("")
   const [fieldError, setFieldError] = useState<string | null>(null)
 
+  const selectedBatch = useMemo(
+    () => batches.find((batch) => batch.id === batchId) ?? null,
+    [batchId, batches],
+  )
+  const linkedCourseId = selectedBatch?.course_id?.trim() ?? ""
+  const courseSelectionLocked = Boolean(linkedCourseId)
+  const selectedBatchCourseTitle = selectedBatch?.course?.trim() ?? ""
+  const linkedCourseInList = linkedCourseId
+    ? courses.some((course) => course.id === linkedCourseId)
+    : true
+
   const handleClose = useCallback(() => {
     setTitle("")
     setSessionDate(today)
@@ -92,6 +118,14 @@ function NewSessionModal({
     setFieldError(null)
     onClose()
   }, [onClose, today])
+
+  const handleBatchChange = useCallback((nextBatchId: string) => {
+    const batch = batches.find((item) => item.id === nextBatchId) ?? null
+    const nextCourseId = batch?.course_id?.trim() ?? ""
+    setBatchId(nextBatchId)
+    setCourseId(nextCourseId)
+    setFieldError(null)
+  }, [batches])
 
   const handleSubmit = useCallback(async () => {
     if (!title.trim()) {
@@ -103,7 +137,7 @@ function NewSessionModal({
       return
     }
     if (!batchId.trim()) {
-      setFieldError("Batch ID is required.")
+      setFieldError("Batch is required.")
       return
     }
     setFieldError(null)
@@ -166,39 +200,60 @@ function NewSessionModal({
             />
           </div>
 
-          {/* Batch ID */}
+          {/* Batch */}
           <div>
             <label className="block text-xs font-semibold text-[#475569] mb-1.5">
-              Batch ID <span className="text-[#DC2626]">*</span>
+              Batch <span className="text-[#DC2626]">*</span>
             </label>
-            <input
-              type="text"
+            <select
               value={batchId}
-              onChange={(e) => setBatchId(e.target.value)}
-              placeholder="Enter batch ID"
+              onChange={(e) => handleBatchChange(e.target.value)}
+              disabled={batchesLoading || creating}
               className="w-full rounded-lg border border-[#C8DDD7] bg-white px-3 py-2 text-sm text-[#020617] placeholder-[#94A3B8] focus:border-[#0B7A5A] focus:outline-none focus:ring-2 focus:ring-[#0B7A5A]/20 transition"
-            />
+            >
+              <option value="">
+                {batchesLoading ? "Loading batches..." : "Select batch"}
+              </option>
+              {batches.map((batch) => (
+                <option key={batch.id} value={batch.id}>
+                  {batch.name}
+                </option>
+              ))}
+            </select>
           </div>
 
-          {/* Course ID (optional) */}
+          {/* Course (optional) */}
           <div>
             <label className="block text-xs font-semibold text-[#475569] mb-1.5">
-              Course ID{" "}
+              Course{" "}
               <span className="text-[#94A3B8] font-normal">(optional)</span>
             </label>
-            <input
-              type="text"
+            <select
               value={courseId}
               onChange={(e) => setCourseId(e.target.value)}
-              placeholder="Enter course ID"
-              className="w-full rounded-lg border border-[#C8DDD7] bg-white px-3 py-2 text-sm text-[#020617] placeholder-[#94A3B8] focus:border-[#0B7A5A] focus:outline-none focus:ring-2 focus:ring-[#0B7A5A]/20 transition"
-            />
+              disabled={coursesLoading || creating || courseSelectionLocked}
+              className="w-full rounded-lg border border-[#C8DDD7] bg-white px-3 py-2 text-sm text-[#020617] placeholder-[#94A3B8] focus:border-[#0B7A5A] focus:outline-none focus:ring-2 focus:ring-[#0B7A5A]/20 transition disabled:bg-[#F8FAFC] disabled:text-[#64748B]"
+            >
+              <option value="">
+                {coursesLoading ? "Loading courses..." : "Select course"}
+              </option>
+              {courseSelectionLocked && !linkedCourseInList && (
+                <option value={linkedCourseId}>
+                  {selectedBatchCourseTitle || "Linked course"}
+                </option>
+              )}
+              {courses.map((course) => (
+                <option key={course.id} value={course.id}>
+                  {course.title}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Errors */}
-          {(fieldError ?? createError) && (
+          {(fieldError ?? createError ?? batchesError ?? coursesError) && (
             <p className="rounded-lg bg-[#FEE2E2] px-3 py-2 text-xs font-semibold text-[#B91C1C]">
-              {fieldError ?? createError}
+              {fieldError ?? createError ?? batchesError ?? coursesError}
             </p>
           )}
         </div>
@@ -321,6 +376,16 @@ function FilterBar({
 export function TrainerAttendancePage() {
   const { data, loading, error, creating, createError, refresh, setParams, createSession } =
     useTrainerAttendanceSessions()
+  const {
+    batches,
+    loading: batchesLoading,
+    error: batchesError,
+  } = useTrainerBatches()
+  const {
+    courses,
+    loading: coursesLoading,
+    error: coursesError,
+  } = useTrainerLms()
 
   // Filter state (uncommitted until Apply)
   const [batchIdInput, setBatchIdInput] = useState("")
@@ -486,6 +551,12 @@ export function TrainerAttendancePage() {
         open={modalOpen}
         creating={creating}
         createError={createError}
+        batches={batches ?? []}
+        batchesLoading={batchesLoading}
+        batchesError={batchesError}
+        courses={courses}
+        coursesLoading={coursesLoading}
+        coursesError={coursesError}
         onClose={() => setModalOpen(false)}
         onSubmit={handleCreateSession}
       />

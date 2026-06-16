@@ -54,14 +54,14 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { BranchManagementPanel } from "./modules/branches";
-import { FranchiseOperationsPanel } from "./modules/franchise";
-import { HRCommandCenter } from "./modules/hr";
-import { ReportsAnalyticsPanel } from "./modules/reports";
-import { UserManagementPanel } from "./modules/users";
-import { ConfirmActionModal } from "./shared/confirm-modal";
-import { clearStoredSession, getStoredSessionValue, storeSessionValue } from "./shared/api";
-import { getRoleDashboardPath, normalizeUserRole } from "./shared/auth";
+import { BranchManagementPanel } from "@/app/branch-admin/_components/BranchManagementPanel";
+import { FranchiseOperationsPanel } from "@/app/franchise-owner/_components/FranchiseOperationsPanel";
+import { HRCommandCenter } from "@/app/hr/_components/HRCommandCenter";
+import { ReportsAnalyticsPanel } from "@/app/super-admin/_components/ReportsAnalyticsPanel";
+import { UserManagementPanel } from "@/app/super-admin/_components/UserManagementPanel";
+import { ConfirmActionModal } from "@/app/shared/confirm-modal";
+import { clearStoredSession, getStoredSessionValue, storeSessionValue } from "@/lib/api";
+import { getRoleDashboardPath, normalizeUserRole } from "@/lib/auth";
 import { useAuthModalStore } from "@/store/authModalStore";
 import { ProfileAvatarDropdown } from "@/components/profile/ProfileAvatarDropdown";
 import type { ComponentType, CSSProperties, FormEvent, ReactNode } from "react";
@@ -630,7 +630,7 @@ function getLoginRedirectPath(profile: AuthProfile | null) {
   return redirectPath;
 }
 
-const publicAuthRoutes = new Set(["/accept-invite", "/reset-password", "/verify-email"]);
+const publicAuthRoutes = new Set(["/", "/accept-invite", "/reset-password", "/verify-email"]);
 
 const roleDisplayNames: Record<string, string> = {
   super_admin: "Super Admin",
@@ -1179,9 +1179,7 @@ export default function Home() {
   const [authSession, setAuthSession] = useState<AuthSession>({ accessToken:"", refreshToken:"", profile:null, rememberMe:false });
   const [isDark, setIsDark] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [sessionReady, setSessionReady] = useState(
-    () => typeof window !== "undefined" && publicAuthRoutes.has(window.location.pathname)
-  );
+  const [sessionReady, setSessionReady] = useState(true);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [logoutBusy, setLogoutBusy] = useState(false);
   const [toast, setToast] = useState("");

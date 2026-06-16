@@ -43,7 +43,7 @@ from app.core.roles import UserRole, role_abbreviation
 from app.core.security import create_access_token, create_refresh_token, decode_token, hash_password, verify_password
 from app.models.token import AuditLog, AuthActionToken, RefreshToken, SecurityEvent
 from app.models.user import User
-from app.services.email import (
+from app.services.shared.email import (
     EmailDeliveryError,
     send_auth_otp_email,
     send_invite_email,

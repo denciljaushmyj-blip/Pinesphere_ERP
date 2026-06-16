@@ -31,7 +31,7 @@ import {
 } from "lucide-react"
 import { useEffect, useState } from "react"
 
-import { getStoredSessionValue } from "@/app/shared/api"
+import { getStoredSessionValue } from "@/lib/api"
 import { useToast } from "@/components/ui/toast"
 
 import {
@@ -52,7 +52,7 @@ import {
 
   type ProfileForm,
   type ProfilePreferences,
-} from "./settingsProfileService"
+} from "@/lib/api/settingsProfile"
 
 type ActiveTab = "profile" | "password" | "preferences"
 type ProfileFieldKey = keyof ProfileForm

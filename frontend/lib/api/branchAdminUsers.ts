@@ -1,4 +1,4 @@
-import { apiRequest, getStoredSessionValue } from "@/app/shared/api"
+import { apiRequest, getStoredSessionValue } from "@/lib/api"
 
 type QueryValue = string | number | boolean | null | undefined
 type QueryParams = Record<string, QueryValue>

@@ -8,7 +8,7 @@
    Purpose: Static values, API URLs, role mappings
 ========================================================= */
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
 
 export const SESSION_KEYS = [
   "pinesphere_access_token",
@@ -76,6 +76,23 @@ export const ROLE_ALIASES = {
   SA: "super_admin",
   BRANCH_ADMIN: "branch_admin",
   BA: "branch_admin",
+  COUNSELLOR: "counsellor",
+  CL: "counsellor",
+  TRAINER: "trainer",
+  TR: "trainer",
+  STUDENT: "student",
+  ST: "student",
+  PARENT: "parent",
+  P: "parent",
+  HR: "hr",
+  FINANCE: "finance",
+  FN: "finance",
+  FRANCHISE_OWNER: "franchise_owner",
+  FO: "franchise_owner",
+  COMPANY_HR: "company_hr",
+  CH: "company_hr",
+  PUBLIC: "public",
+  PB: "public",
 } as const;
 
 export const ROLE_DASHBOARD_PATHS = {

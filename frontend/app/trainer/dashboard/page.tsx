@@ -10,7 +10,7 @@ import {
 } from "lucide-react"
 import { useMemo, useState } from "react"
 
-import { getStoredSession } from "@/app/shared/auth"
+import { getStoredSession } from "@/lib/auth"
 import { ChartCard, LineChart } from "@/components/role-dashboard"
 import { useTrainerDashboard } from "@/modules/trainers/hooks/useTrainerDashboard"
 import type { TrainerDashboardV1Response, TrainerDashboardResponse } from "@/modules/trainers/types"
@@ -157,9 +157,9 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 export default function TrainerDashboardPage() {
   const { data, loading, error, refresh } = useTrainerDashboard()
   const [userName] = useState(() => {
-    if (typeof window === "undefined") return "Anitha Trainer"
+    if (typeof window === "undefined") return "Trainer"
     const session = getStoredSession()
-    return session?.user?.full_name || "Anitha Trainer"
+    return session?.user?.full_name || "Trainer"
   })
 
   const today = new Date().toLocaleDateString("en-IN", {

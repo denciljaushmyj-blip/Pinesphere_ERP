@@ -19,7 +19,7 @@ import {
   type BranchUserRecord,
   type OptionRecord
 } from "@/lib/api/branchAdminUsers"
-import { resolveBranchScope } from "./branchAdminData"
+import { resolveBranchScope } from "@/lib/api/branchAdminData"
 
 const defaultScope = resolveBranchScope()
 
@@ -42,7 +42,7 @@ const emptyForm: UserForm = {
   email: "",
   phone: "",
   role: "student",
-  password: "Admin@123",
+  password: "",
   status: "active",
   course_enrolled: "",
   batch_name: "",
@@ -496,7 +496,7 @@ function UserFormModal({
     email: user?.email ?? "",
     phone: user?.phone ?? "",
     role: user?.role ?? "student",
-    password: "Admin@123",
+    password: "",
     status: user?.is_active === false ? "inactive" : "active",
     course_enrolled: user?.course_enrolled ?? "",
     batch_name: user?.batch_name ?? "",

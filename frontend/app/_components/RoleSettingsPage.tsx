@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
 import ProfileSettingsPage from "@/app/settings/profile/page"
-import { getRoleDashboardPath, getStoredSession, normalizeUserRole, type UserRole } from "@/app/shared/auth"
+import { getRoleDashboardPath, getStoredSession, normalizeUserRole, type UserRole } from "@/lib/auth"
 
 const ROLE_SETTINGS_PATHS: Partial<Record<UserRole, string>> = {
   super_admin: "/super-admin/settings",

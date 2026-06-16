@@ -3,74 +3,84 @@
 import { X } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
-import type { TrainerLmsLesson, TrainerLmsLessonUpdate } from "../types"
-
-const CONTENT_TYPES = [
-  { value: "lesson", label: "Lesson" },
-  { value: "assignment", label: "Assignment" },
-  { value: "quiz_prep", label: "Quiz Prep" },
-  { value: "project", label: "Project" },
-]
+import type { TrainerLmsLesson, TrainerLmsLessonCreate, TrainerLmsLessonUpdate } from "../types"
 
 interface FormState {
   title: string
   summary: string
-  content_type: string
+  content: string
+  sort_order: string
   video_url: string
   pdf_url: string
   assignment_url: string
-  due_at: string
-  max_marks: string
-  sort_order: string
-  is_preview: boolean
 }
 
-function toFormState(lesson: TrainerLmsLesson): FormState {
+function getLessonContent(lesson: TrainerLmsLesson | null | undefined): string | null {
+  if (!lesson || !("content" in lesson)) return null
+  const content = (lesson as TrainerLmsLesson & { content?: string | null }).content
+  return typeof content === "string" && content.trim() ? content : null
+}
+
+function emptyFormState(): FormState {
   return {
-    title: lesson.title,
-    summary: lesson.summary ?? "",
-    content_type: lesson.content_type,
-    video_url: lesson.video_url ?? "",
-    pdf_url: lesson.pdf_url ?? "",
-    assignment_url: lesson.assignment_url ?? "",
-    // due_at comes as ISO string; datetime-local input wants "YYYY-MM-DDTHH:mm"
-    due_at: lesson.due_at ? lesson.due_at.slice(0, 16) : "",
-    max_marks: String(lesson.max_marks ?? 0),
-    sort_order: String(lesson.sort_order ?? 1),
-    is_preview: lesson.is_preview,
+    title: "",
+    summary: "",
+    content: "",
+    sort_order: "1",
+    video_url: "",
+    pdf_url: "",
+    assignment_url: "",
   }
 }
 
-function buildPayload(form: FormState, original: TrainerLmsLesson): TrainerLmsLessonUpdate {
+function toFormState(lesson: TrainerLmsLesson | null | undefined): FormState {
+  if (!lesson) return emptyFormState()
+
+  return {
+    title: lesson.title,
+    summary: lesson.summary ?? "",
+    content: getLessonContent(lesson) ?? "",
+    sort_order: String(lesson.sort_order ?? 1),
+    video_url: lesson.video_url ?? "",
+    pdf_url: lesson.pdf_url ?? "",
+    assignment_url: lesson.assignment_url ?? "",
+  }
+}
+
+function buildCreatePayload(form: FormState): TrainerLmsLessonCreate {
+  const sortOrder = parseInt(form.sort_order, 10)
+  const payload: TrainerLmsLessonCreate = {
+    title: form.title.trim(),
+    summary: form.summary.trim() || null,
+    content: form.content.trim() || null,
+    sort_order: !isNaN(sortOrder) ? sortOrder : 1,
+  }
+
+  const videoUrl = form.video_url.trim()
+  const pdfUrl = form.pdf_url.trim()
+  const assignmentUrl = form.assignment_url.trim()
+
+  if (videoUrl) payload.video_url = videoUrl
+  if (pdfUrl) payload.pdf_url = pdfUrl
+  if (assignmentUrl) payload.assignment_url = assignmentUrl
+
+  return payload
+}
+
+function buildUpdatePayload(form: FormState, original: TrainerLmsLesson): TrainerLmsLessonUpdate {
   const patch: TrainerLmsLessonUpdate = {}
 
-  const trimmed = form.title.trim()
-  if (trimmed !== original.title) patch.title = trimmed
+  const title = form.title.trim()
+  if (title !== original.title) patch.title = title
 
   const summary = form.summary.trim() || null
   if (summary !== original.summary) patch.summary = summary
 
-  if (form.content_type !== original.content_type) patch.content_type = form.content_type
+  const content = form.content.trim() || null
+  if (content !== getLessonContent(original)) patch.content = content
 
-  const video_url = form.video_url.trim() || null
-  if (video_url !== original.video_url) patch.video_url = video_url
-
-  const pdf_url = form.pdf_url.trim() || null
-  if (pdf_url !== original.pdf_url) patch.pdf_url = pdf_url
-
-  const assignment_url = form.assignment_url.trim() || null
-  if (assignment_url !== original.assignment_url) patch.assignment_url = assignment_url
-
-  const due_at = form.due_at ? `${form.due_at}:00` : null
-  if (due_at !== original.due_at) patch.due_at = due_at
-
-  const max_marks = parseInt(form.max_marks, 10)
-  if (!isNaN(max_marks) && max_marks !== original.max_marks) patch.max_marks = max_marks
-
-  const sort_order = parseInt(form.sort_order, 10)
-  if (!isNaN(sort_order) && sort_order !== original.sort_order) patch.sort_order = sort_order
-
-  if (form.is_preview !== original.is_preview) patch.is_preview = form.is_preview
+  const sortOrder = parseInt(form.sort_order, 10)
+  if (!isNaN(sortOrder) && sortOrder !== original.sort_order) patch.sort_order = sortOrder
 
   return patch
 }
@@ -98,24 +108,27 @@ const inputClass =
   "w-full rounded-lg border border-[#D1D5DB] bg-white px-3 py-2 text-sm font-semibold text-[#0F172A] outline-none transition placeholder:text-[#94A3B8] focus:border-[#0B7A5A] focus:ring-2 focus:ring-[#0B7A5A]/15 disabled:opacity-50"
 
 export function TrainerLessonForm({
-  lesson,
+  lesson = null,
+  onCreate,
   onSave,
   onClose,
 }: {
-  lesson: TrainerLmsLesson
-  onSave: (lessonId: string, payload: TrainerLmsLessonUpdate) => Promise<void>
+  lesson?: TrainerLmsLesson | null
+  onCreate?: (payload: TrainerLmsLessonCreate) => Promise<void>
+  onSave?: (lessonId: string, payload: TrainerLmsLessonUpdate) => Promise<void>
   onClose: () => void
 }) {
   const [form, setForm] = useState<FormState>(() => toFormState(lesson))
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const titleRef = useRef<HTMLInputElement>(null)
+  const isEditMode = Boolean(lesson)
 
   // Reset form when the lesson prop changes (e.g. user picks a different lesson to edit)
   useEffect(() => {
     setForm(toFormState(lesson))
     setFormError(null)
-  }, [lesson.id])
+  }, [lesson?.id])
 
   // Focus title on open
   useEffect(() => {
@@ -131,7 +144,7 @@ export function TrainerLessonForm({
     return () => window.removeEventListener("keydown", onKeyDown)
   }, [onClose])
 
-  function set(field: keyof FormState, value: string | boolean) {
+  function set(field: keyof FormState, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
 
@@ -143,16 +156,27 @@ export function TrainerLessonForm({
       return
     }
 
-    const payload = buildPayload(form, lesson)
-    if (Object.keys(payload).length === 0) {
-      onClose()
+    const sortOrder = parseInt(form.sort_order, 10)
+    if (isNaN(sortOrder) || sortOrder < 1) {
+      setFormError("Sort order must be 1 or higher.")
       return
     }
 
     setSaving(true)
     setFormError(null)
     try {
-      await onSave(lesson.id, payload)
+      if (lesson) {
+        if (!onSave) throw new Error("Lesson update is not available.")
+        const payload = buildUpdatePayload(form, lesson)
+        if (Object.keys(payload).length === 0) {
+          onClose()
+          return
+        }
+        await onSave(lesson.id, payload)
+      } else {
+        if (!onCreate) throw new Error("Lesson creation is not available.")
+        await onCreate(buildCreatePayload(form))
+      }
       onClose()
     } catch (err: unknown) {
       setFormError(err instanceof Error ? err.message : "Failed to save lesson.")
@@ -170,13 +194,15 @@ export function TrainerLessonForm({
       }}
     >
       {/* Panel */}
-      <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl border border-[#E3ECE8] bg-white shadow-[0_24px_64px_rgba(15,23,42,0.18)]">
+      <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-[#E3ECE8] bg-white shadow-[0_24px_64px_rgba(15,23,42,0.18)]">
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-[#E3ECE8] bg-white px-6 py-4">
           <div>
-            <h2 className="text-base font-black text-[#0F172A]">Edit Lesson</h2>
-            <p className="mt-0.5 text-xs font-semibold text-[#64748B] truncate max-w-xs">
-              {lesson.title}
+            <h2 className="text-base font-black text-[#0F172A]">
+              {isEditMode ? "Edit Lesson" : "Create Lesson"}
+            </h2>
+            <p className="mt-0.5 max-w-xs truncate text-xs font-semibold text-[#64748B]">
+              {isEditMode ? lesson?.title : "Add lesson details first. Materials can be uploaded after saving."}
             </p>
           </div>
           <button
@@ -207,23 +233,6 @@ export function TrainerLessonForm({
               />
             </LabeledField>
 
-            {/* Content type */}
-            <LabeledField label="Content Type" htmlFor="lesson-content-type">
-              <select
-                id="lesson-content-type"
-                className={inputClass}
-                value={form.content_type}
-                onChange={(e) => set("content_type", e.target.value)}
-                disabled={saving}
-              >
-                {CONTENT_TYPES.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </LabeledField>
-
             {/* Summary */}
             <LabeledField label="Summary" htmlFor="lesson-summary">
               <textarea
@@ -237,111 +246,31 @@ export function TrainerLessonForm({
               />
             </LabeledField>
 
-            {/* Video URL */}
-            <LabeledField label="Video URL" htmlFor="lesson-video-url">
-              <input
-                id="lesson-video-url"
-                type="url"
-                className={inputClass}
-                value={form.video_url}
-                onChange={(e) => set("video_url", e.target.value)}
-                placeholder="https://…"
+            {/* Content */}
+            <LabeledField label="Content" htmlFor="lesson-content">
+              <textarea
+                id="lesson-content"
+                className={`${inputClass} min-h-[120px] resize-y`}
+                value={form.content}
+                onChange={(e) => set("content", e.target.value)}
+                placeholder="Lesson notes, instructions, or overview"
                 disabled={saving}
+                rows={5}
               />
             </LabeledField>
 
-            {/* PDF URL */}
-            <LabeledField label="PDF URL" htmlFor="lesson-pdf-url">
+            {/* Sort order */}
+            <LabeledField label="Sort Order" htmlFor="lesson-sort-order">
               <input
-                id="lesson-pdf-url"
-                type="url"
+                id="lesson-sort-order"
+                type="number"
+                min={1}
                 className={inputClass}
-                value={form.pdf_url}
-                onChange={(e) => set("pdf_url", e.target.value)}
-                placeholder="https://…"
+                value={form.sort_order}
+                onChange={(e) => set("sort_order", e.target.value)}
                 disabled={saving}
               />
             </LabeledField>
-
-            {/* Assignment URL */}
-            <LabeledField label="Assignment URL" htmlFor="lesson-assignment-url">
-              <input
-                id="lesson-assignment-url"
-                type="url"
-                className={inputClass}
-                value={form.assignment_url}
-                onChange={(e) => set("assignment_url", e.target.value)}
-                placeholder="https://…"
-                disabled={saving}
-              />
-            </LabeledField>
-
-            {/* Due at + Max marks row */}
-            <div className="grid grid-cols-2 gap-4">
-              <LabeledField label="Due Date" htmlFor="lesson-due-at">
-                <input
-                  id="lesson-due-at"
-                  type="datetime-local"
-                  className={inputClass}
-                  value={form.due_at}
-                  onChange={(e) => set("due_at", e.target.value)}
-                  disabled={saving}
-                />
-              </LabeledField>
-              <LabeledField label="Max Marks" htmlFor="lesson-max-marks">
-                <input
-                  id="lesson-max-marks"
-                  type="number"
-                  min={0}
-                  className={inputClass}
-                  value={form.max_marks}
-                  onChange={(e) => set("max_marks", e.target.value)}
-                  disabled={saving}
-                />
-              </LabeledField>
-            </div>
-
-            {/* Sort order + Preview row */}
-            <div className="grid grid-cols-2 gap-4 items-end">
-              <LabeledField label="Sort Order" htmlFor="lesson-sort-order">
-                <input
-                  id="lesson-sort-order"
-                  type="number"
-                  min={1}
-                  className={inputClass}
-                  value={form.sort_order}
-                  onChange={(e) => set("sort_order", e.target.value)}
-                  disabled={saving}
-                />
-              </LabeledField>
-              {/* Is preview toggle */}
-              <div className="flex items-center gap-2.5 pb-2">
-                <button
-                  id="lesson-is-preview"
-                  type="button"
-                  role="switch"
-                  aria-checked={form.is_preview}
-                  onClick={() => set("is_preview", !form.is_preview)}
-                  disabled={saving}
-                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-[#0B7A5A]/40 disabled:opacity-50 ${
-                    form.is_preview ? "bg-[#0B7A5A]" : "bg-[#CBD5E1]"
-                  }`}
-                >
-                  <span
-                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition-transform ${
-                      form.is_preview ? "translate-x-4" : "translate-x-0"
-                    }`}
-                  />
-                </button>
-                <label
-                  htmlFor="lesson-is-preview"
-                  className="text-xs font-black text-[#475569] cursor-pointer select-none"
-                  onClick={() => set("is_preview", !form.is_preview)}
-                >
-                  Preview lesson
-                </label>
-              </div>
-            </div>
 
             {/* Error */}
             {formError && (
@@ -369,10 +298,12 @@ export function TrainerLessonForm({
               {saving ? (
                 <>
                   <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                  Saving…
+                  Saving...
                 </>
-              ) : (
+              ) : isEditMode ? (
                 "Save Changes"
+              ) : (
+                "Create Lesson"
               )}
             </button>
           </div>

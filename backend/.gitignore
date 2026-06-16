@@ -1,0 +1,26 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+
+# Runtime uploads
+uploads/
+
+# Generated media and local tools
+video_frames/
+video_tools/
+
+# Build outputs
+dist/
+build/
+
+# Editors
+.vscode/
+.idea/
+
+# Logs
+*.log

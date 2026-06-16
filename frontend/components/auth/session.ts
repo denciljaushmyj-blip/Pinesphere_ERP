@@ -16,8 +16,8 @@ Last Updated: Auto Generated
    Keeping imports together makes dependencies easy to review.
 ===================================================== */
 
-import { API_URL, clearStoredSession, storeSessionValue } from "@/app/shared/api"
-import { getRoleDashboardPath, normalizeUserRole } from "@/app/shared/auth"
+import { API_URL, clearStoredSession, storeSessionValue } from "@/lib/api"
+import { getRoleDashboardPath, normalizeUserRole } from "@/lib/auth"
 
 /* =====================================================
    SECTION: TYPES AND INTERFACES
@@ -67,6 +67,8 @@ export async function persistAuthSession(data: TokenResponse, rememberMe = true)
   storeSessionValue("pinesphere_access_token", data.access_token, rememberMe)
   storeSessionValue("pinesphere_refresh_token", data.refresh_token, rememberMe)
   storeSessionValue("pinesphere_profile", JSON.stringify(normalizedProfile), rememberMe)
+  const storage = rememberMe ? window.localStorage : window.sessionStorage
+  storage.setItem("pinesphere_user", JSON.stringify(normalizedProfile))
   console.log("Logged in role:", profile.role)
   console.log("Redirecting to:", redirectPath)
   window.location.href = redirectPath

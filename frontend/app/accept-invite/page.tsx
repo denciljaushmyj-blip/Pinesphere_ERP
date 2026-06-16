@@ -22,7 +22,7 @@ import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from "react
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
-import { API_URL, parseRequestError } from "../shared/api";
+import { API_URL, parseRequestError } from "@/lib/api";
 
 /* =====================================================
    SECTION: TYPES AND INTERFACES

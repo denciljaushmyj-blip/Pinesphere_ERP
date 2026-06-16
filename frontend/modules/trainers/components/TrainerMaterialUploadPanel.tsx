@@ -3,7 +3,7 @@
 import { ExternalLink, FileText, FileUp, Loader2, UploadCloud, Video } from "lucide-react"
 import { useRef, useState } from "react"
 
-import { API_URL } from "@/lib/api"
+import { openAuthenticatedFile } from "@/lib/api"
 import type { TrainerLessonMaterial, TrainerLmsCourse, TrainerMaterialUploadInput } from "../types"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -45,6 +45,7 @@ function MaterialIcon({ contentType }: { contentType: string }) {
 
 export function TrainerMaterialUploadPanel({
   course,
+  lessonId = null,
   uploadApiConnected,
   materials = [],
   materialsLoading = false,
@@ -53,6 +54,8 @@ export function TrainerMaterialUploadPanel({
   onUploaded,
 }: {
   course: TrainerLmsCourse | null
+  /** Optional: when provided, uploads are attached to this lesson. */
+  lessonId?: string | null
   uploadApiConnected: boolean
   /** Defaults to [] — safe when parent has not yet passed the new prop. */
   materials?: TrainerLessonMaterial[]
@@ -70,6 +73,10 @@ export function TrainerMaterialUploadPanel({
   const [localError, setLocalError] = useState<string | null>(null)
 
   const canUpload = Boolean(course && uploadApiConnected && uploadMaterial)
+  const isLessonScoped = Boolean(lessonId)
+  const visibleMaterials = isLessonScoped
+    ? materials.filter((material) => material.lesson_id === lessonId)
+    : materials
   // Surface either the hook-level upload error or the local one
   const displayError = uploadError ?? localError
 
@@ -79,7 +86,7 @@ export function TrainerMaterialUploadPanel({
     setSuccessMessage(null)
     setLocalError(null)
     try {
-      await uploadMaterial({ courseId: course.id, file })
+      await uploadMaterial({ courseId: course.id, lessonId, file })
       setFile(null)
       if (fileInputRef.current) fileInputRef.current.value = ""
       setSuccessMessage(`"${file.name}" uploaded successfully.`)
@@ -97,21 +104,18 @@ export function TrainerMaterialUploadPanel({
     setFile(event.target.files?.[0] ?? null)
   }
 
-  function buildFileUrl(fileUrl: string): string {
-    if (fileUrl.startsWith("http://") || fileUrl.startsWith("https://")) return fileUrl
-    const base = (API_URL ?? "").replace(/\/$/, "")
-    const path = fileUrl.startsWith("/") ? fileUrl : `/${fileUrl}`
-    return `${base}${path}`
-  }
-
   return (
     <section className="rounded-lg border border-[#E3ECE8] bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.035)]">
 
       {/* Header */}
       <div>
-        <h3 className="text-lg font-black text-[#0F172A]">Materials</h3>
+        <h3 className="text-lg font-black text-[#0F172A]">
+          {isLessonScoped ? "Lesson Materials" : "Materials"}
+        </h3>
         <p className="mt-1 text-sm font-semibold text-[#64748B]">
-          PDF and video attachments for this course.
+          {isLessonScoped
+            ? "PDF and video attachments for this lesson."
+            : "PDF and video attachments for this course."}
         </p>
       </div>
 
@@ -122,9 +126,13 @@ export function TrainerMaterialUploadPanel({
             <UploadCloud size={20} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-black text-[#0F172A]">Upload PDF or video</p>
+            <p className="text-sm font-black text-[#0F172A]">
+              {isLessonScoped ? "Upload lesson material" : "Upload PDF or video"}
+            </p>
             <p className="mt-1 text-xs font-bold text-[#64748B]">
-              Attach a PDF, MP4, WebM, or MOV file to this course.
+              {isLessonScoped
+                ? "Attach a PDF, MP4, WebM, or MOV file to this lesson."
+                : "Attach a PDF, MP4, WebM, or MOV file to this course."}
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <input
@@ -170,17 +178,17 @@ export function TrainerMaterialUploadPanel({
             <Loader2 size={14} className="animate-spin" />
             <span>Loading materials…</span>
           </div>
-        ) : materials.length === 0 ? (
+        ) : visibleMaterials.length === 0 ? (
           <p className="py-3 text-xs font-bold text-[#94A3B8]">
-            No materials uploaded for this course yet.
+            {isLessonScoped
+              ? "No materials uploaded for this lesson yet."
+              : "No materials uploaded for this course yet."}
           </p>
         ) : (
           <ul className="divide-y divide-[#F1F5F9]">
-            {materials.map((material) => {
+            {visibleMaterials.map((material) => {
               const sizeLabel = formatBytes(material.file_size)
               const dateLabel = formatDate(material.created_at)
-              const href = buildFileUrl(material.file_url)
-
               return (
                 <li
                   key={material.id}
@@ -203,15 +211,14 @@ export function TrainerMaterialUploadPanel({
                     </p>
                   </div>
 
-                  <a
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    type="button"
+                    onClick={() => void openAuthenticatedFile(material.file_url, material.filename)}
                     className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-[#E3ECE8] bg-white px-3 text-xs font-black text-[#0B7A5A] transition hover:bg-[#F0FAF6]"
                   >
                     <ExternalLink size={12} />
                     <span>Open</span>
-                  </a>
+                  </button>
                 </li>
               )
             })}

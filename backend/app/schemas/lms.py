@@ -130,3 +130,70 @@ class AiTutorRequest(BaseModel):
     course_id: str | None = None
     lesson_id: str | None = None
     question: str
+
+
+# =====================================================
+# SECTION: STUDENT COURSE LISTING
+# PURPOSE:
+# Student-scoped LMS course card data for course listings
+# =====================================================
+
+class StudentCourseListItemResponse(BaseModel):
+    """Course summary shown in the student LMS listing."""
+    id: str
+    title: str
+    description: str
+    duration: str | None = None
+    difficulty_level: str
+    status: str
+    trainer: str | None = None
+    trainer_initials: str | None = None
+    total_lessons: int = 0
+    completed_lessons: int = 0
+    progress_percent: int = 0
+    material_count: int = 0
+    video_count: int = 0
+
+    class Config:
+        from_attributes = True
+
+
+# =====================================================
+# SECTION: STUDENT COURSE DETAIL
+# PURPOSE:
+# Student-scoped course detail with lessons and materials
+# =====================================================
+
+class StudentMaterialResponse(BaseModel):
+    """Material uploaded by trainer — stored in trainer_lesson_materials table."""
+    id: str
+    lesson_id: str | None = None
+    filename: str
+    file_url: str
+    file_size: int | None = None
+    content_type: str  # "pdf", "video", etc.
+    download_count: int = 0
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class StudentLessonResponse(LessonResponse):
+    """Lesson with optional materials list."""
+    materials: list[StudentMaterialResponse] = []
+    is_completed: bool = False
+    completed_at: datetime | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class StudentCourseDetailResponse(CourseResponse):
+    """Full course detail for student — includes lessons and materials."""
+    difficulty_level: str = "Beginner"
+    lessons: list[StudentLessonResponse] = []
+    trainer_id: str | None = None
+
+    class Config:
+        from_attributes = True

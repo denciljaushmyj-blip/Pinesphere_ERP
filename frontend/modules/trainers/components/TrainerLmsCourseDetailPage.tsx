@@ -184,6 +184,7 @@ export function TrainerLmsCourseDetailPage({ courseId }: { courseId: string }) {
     connected,
     uploadApiConnected,
     refresh,
+    createLesson,
     editLesson,
     deleteLesson,
     updateCourseStatus,
@@ -196,6 +197,7 @@ export function TrainerLmsCourseDetailPage({ courseId }: { courseId: string }) {
 
   const status = statusBadge(course.status)
   const difficulty = difficultyBadge(course.difficulty_level)
+  const unassignedCourseMaterials = materials.filter((material) => material.lesson_id === null)
 
   return (
     <div className="space-y-6">
@@ -362,6 +364,12 @@ export function TrainerLmsCourseDetailPage({ courseId }: { courseId: string }) {
           lessons={lessons}
           loading={lessonsLoading}
           connected={connected}
+          materials={materials}
+          materialsLoading={materialsLoading}
+          uploadApiConnected={uploadApiConnected}
+          uploadMaterial={uploadMaterial}
+          uploadError={uploadError}
+          createLesson={createLesson}
           onEditLesson={editLesson}
           onDeleteLesson={deleteLesson}
         />
@@ -369,7 +377,7 @@ export function TrainerLmsCourseDetailPage({ courseId }: { courseId: string }) {
         <TrainerMaterialUploadPanel
           course={course}
           uploadApiConnected={uploadApiConnected}
-          materials={materials}
+          materials={unassignedCourseMaterials}
           materialsLoading={materialsLoading}
           uploadMaterial={uploadMaterial}
           uploadError={uploadError}

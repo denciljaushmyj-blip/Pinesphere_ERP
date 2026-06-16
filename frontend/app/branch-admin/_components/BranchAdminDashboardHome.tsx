@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from "react"
 import { readBranchAdminSession } from "./BranchAdminShell"
 import { BRANCH_ADMIN_PREFERENCES_EVENT, readBranchAdminPreferences } from "./BranchAdminShell"
 import { getBranchDashboard, type BranchDashboard } from "@/lib/api/branchAdmin"
-import { resolveBranchScope } from "./branchAdminData"
+import { resolveBranchScope } from "@/lib/api/branchAdminData"
 
 const actions = [
   { label: "Add Student", href: "/branch-admin/students?action=create", icon: Plus },

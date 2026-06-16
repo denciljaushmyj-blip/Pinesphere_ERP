@@ -19,7 +19,7 @@ Last Updated: Auto Generated
 import { FormEvent, useState } from "react"
 import { LockKeyhole, Mail, UserRound } from "lucide-react"
 
-import { API_URL } from "@/app/shared/api"
+import { API_URL } from "@/lib/api"
 import { useAuthModalStore } from "@/store/authModalStore"
 
 import { AuthBrandHeader, AuthDivider, AuthGoogleButton, AuthInput, AuthPrimaryButton } from "./AuthParts"

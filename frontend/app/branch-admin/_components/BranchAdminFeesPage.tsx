@@ -56,7 +56,7 @@ import {
   downloadPendingFeesReport,
 } from "@/lib/api/branchAdmin"
 import { getPaymentMethodOptions, getStudentOptions, type PaymentMethodOption, type StudentOption } from "@/lib/api/branchAdminOptions"
-import { resolveBranchScope } from "./branchAdminData"
+import { resolveBranchScope } from "@/lib/api/branchAdminData"
 
 type FeePaymentRecord = Record<string, unknown>
 
